@@ -47,8 +47,8 @@ const ADMIN_PASSCODE = process.env.ADMIN_PASSCODE || 'admin123';
 app.use(cors());
 app.use(express.json());
 
-// Ensure uploads directory exists
-const uploadsDir = path.join(__dirname, 'uploads');
+// Ensure uploads directory exists (use /tmp in serverless environment)
+const uploadsDir = process.env.VERCEL ? '/tmp' : path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
