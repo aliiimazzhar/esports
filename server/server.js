@@ -80,7 +80,9 @@ const upload = multer({
 
 // MongoDB Connection
 const mongoURI = process.env.MONGODB_URI || 'mongodb://localhost:27017/esports';
-mongoose.connect(mongoURI)
+mongoose.connect(mongoURI, {
+  serverSelectionTimeoutMS: 5000
+})
   .then(() => console.log('Connected to MongoDB database successfully'))
   .catch(err => console.error('MongoDB database connection error:', err));
 
