@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 const registrationSchema = new mongoose.Schema({
-  eventId: { type: mongoose.Schema.Types.ObjectId, ref: 'Event' },
+  eventId: { type: mongoose.Schema.Types.ObjectId, ref: 'Event', required: true },
   registrationType: { type: String, enum: ['Solo', 'Team'], required: true },
   trackingUid: { type: String, required: true }, // The first UID entered (acts as primary key)
   allCharacterIds: [{ type: String, required: true }], // Stores all UIDs
