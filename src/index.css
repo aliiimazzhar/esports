@@ -1,0 +1,371 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-eb-yellow: #FFF512;
+  --color-gold: #FFDE40;
+  --color-orig-yellow: #EBB014;
+  --color-harvest: #DE8D00;
+  --color-tan: #9C4100;
+  --color-black: #090907;
+  
+  font-family: 'Poppins', sans-serif;
+}
+
+body {
+  background-color: #090907;
+  color: #f3f4f6;
+  margin: 0;
+  min-height: 100vh;
+  overflow-x: hidden;
+  letter-spacing: 0.025em;
+}
+
+*:focus {
+  outline: none !important;
+}
+
+/* Custom Scrollbar for a sleek gaming look */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #090907;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1e1e17;
+  border: 1px solid #EBB014;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #EBB014;
+}
+
+/* Chrome, Safari, Edge, Opera number input styling reset */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Firefox number input styling reset */
+input[type=number] {
+  -moz-appearance: textfield;
+}
+
+/* Typography styles */
+.metallic-gold-text {
+  color: #FFDE40;
+  text-shadow: 0 0 10px rgba(255, 222, 64, 0.4);
+}
+
+.glow-yellow-text {
+  text-shadow: 0 0 8px rgba(255, 245, 18, 0.6);
+}
+
+/* Premium PUBG HUD Panel Style */
+.pubg-hud-panel {
+  background-color: rgba(18, 18, 14, 0.6);
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 245, 18, 0.15);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8);
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.pubg-hud-panel::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  pointer-events: none;
+  background: 
+    linear-gradient(to right, #FFF512, #FFF512) 0 0 / 24px 2px no-repeat,
+    linear-gradient(to bottom, #FFF512, #FFF512) 0 0 / 2px 24px no-repeat,
+    linear-gradient(to left, #FFF512, #FFF512) 100% 0 / 24px 2px no-repeat,
+    linear-gradient(to bottom, #FFF512, #FFF512) 100% 0 / 2px 24px no-repeat,
+    linear-gradient(to right, #FFF512, #FFF512) 0 100% / 24px 2px no-repeat,
+    linear-gradient(to top, #FFF512, #FFF512) 0 100% / 2px 24px no-repeat,
+    linear-gradient(to left, #FFF512, #FFF512) 100% 100% / 24px 2px no-repeat,
+    linear-gradient(to top, #FFF512, #FFF512) 100% 100% / 2px 24px no-repeat;
+}
+
+/* Cyberpunk Card Glow & Flicker Animation */
+.cyber-card {
+  position: relative;
+  transition: border-color 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.cyber-card:hover {
+  border-color: rgba(255, 245, 18, 0.6);
+  box-shadow: 0 0 20px rgba(255, 245, 18, 0.35);
+}
+
+/* Combat Skewed Button Style */
+.pubg-btn-primary {
+  position: relative;
+  background-color: #FFF512;
+  color: #090907;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 0.75rem 2rem;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 2px solid #FFF512;
+  font-size: 0.875rem;
+  clip-path: polygon(8% 0%, 100% 0%, 92% 100%, 0% 100%);
+}
+
+.pubg-btn-primary:hover {
+  transform: scale(1.03);
+}
+
+.pubg-btn-primary:active {
+  transform: scale(0.98);
+}
+
+.pubg-btn-secondary {
+  position: relative;
+  background-color: transparent;
+  color: #ffffff;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 0.75rem 2rem;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 2px solid rgba(235, 176, 20, 0.4);
+  font-size: 0.875rem;
+  clip-path: polygon(8% 0%, 100% 0%, 92% 100%, 0% 100%);
+}
+
+.pubg-btn-secondary:hover {
+  transform: scale(1.03);
+}
+
+/* PUBG Tactical input styling */
+.pubg-input {
+  background-color: #090907;
+  border: 2px solid #2e2e25;
+  color: #ffffff;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  transition: all 0.2s ease-out;
+  outline: none;
+}
+
+.pubg-input:focus {
+  border-color: #FFF512;
+  box-shadow: 0 0 10px rgba(255, 245, 18, 0.15);
+}
+
+/* HUD Notched Borders for alerts */
+.tactical-border-danger {
+  border-left: 4px solid #9C4100;
+  background-color: rgba(156, 65, 0, 0.08);
+}
+
+.tactical-border-warning {
+  border-left: 4px solid #DE8D00;
+  background-color: rgba(222, 141, 0, 0.08);
+}
+
+.tactical-border-success {
+  border-left: 4px solid #FFF512;
+  background-color: rgba(255, 245, 18, 0.06);
+}
+
+/* Keyframe Animations & Utilities */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(24px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    transform: translateX(-24px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes zoomIn {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(255, 245, 18, 0.25);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(255, 245, 18, 0.55);
+  }
+}
+
+/* Cyber Terminal Screen Flicker Glitch keyframes */
+@keyframes cyberFlicker {
+  0%, 19.999%, 22%, 62.999%, 64%, 64.999%, 70%, 100% {
+    opacity: 0.99;
+    filter: none;
+  }
+  20%, 21.999%, 63%, 63.999%, 65%, 69.999% {
+    opacity: 0.7;
+    filter: saturate(1.8) brightness(1.2);
+  }
+}
+
+/* Hero Shutter/Crop Reveal Animation */
+@keyframes hudCrop {
+  0% {
+    clip-path: inset(50% 0 50% 0);
+    opacity: 0;
+  }
+  100% {
+    clip-path: inset(0 0 0 0);
+    opacity: 1;
+  }
+}
+
+/* Cyberpunk Text Distort - Strictly Sideways (X-Axis) Chromatic Aberration Trails */
+@keyframes textDistort {
+  0%, 100% {
+    transform: skewX(0deg) translateX(0);
+    text-shadow: 0 0 8px rgba(255, 245, 18, 0.5);
+  }
+  15% {
+    transform: skewX(0deg) translateX(0);
+    text-shadow: 0 0 8px rgba(255, 245, 18, 0.5);
+  }
+  16% {
+    transform: skewX(-5deg) translateX(-4px);
+    text-shadow: 5px 0 0 #9C4100, -5px 0 0 #FFF512, 3px 0 0 #FFDE40;
+  }
+  17% {
+    transform: skewX(6deg) translateX(4px);
+    text-shadow: -5px 0 0 #9C4100, 5px 0 0 #FFF512, -3px 0 0 #FFDE40;
+  }
+  18% {
+    transform: skewX(0deg) translateX(0);
+    text-shadow: 0 0 8px rgba(255, 245, 18, 0.5);
+  }
+  45% {
+    transform: skewX(0deg) translateX(0);
+    text-shadow: 0 0 8px rgba(255, 245, 18, 0.5);
+  }
+  46% {
+    transform: skewX(-6deg) translateX(-5px);
+    text-shadow: 6px 0 0 #EBB014, -6px 0 0 #9C4100, 4px 0 0 #FFF512;
+  }
+  48% {
+    transform: skewX(7deg) translateX(5px);
+    text-shadow: -6px 0 0 #EBB014, 6px 0 0 #9C4100, -4px 0 0 #FFF512;
+  }
+  50% {
+    transform: skewX(0deg) translateX(0);
+    text-shadow: 0 0 8px rgba(255, 245, 18, 0.5);
+  }
+  75% {
+    transform: skewX(0deg) translateX(0);
+    text-shadow: 0 0 8px rgba(255, 245, 18, 0.5);
+  }
+  76% {
+    transform: skewX(6deg) translateX(4px);
+    text-shadow: 4px 0 0 #FFDE40, -4px 0 0 #9C4100, 2px 0 0 #FFF512;
+  }
+  78% {
+    transform: skewX(-5deg) translateX(-4px);
+    text-shadow: -4px 0 0 #FFDE40, 4px 0 0 #9C4100, -2px 0 0 #FFF512;
+  }
+  80% {
+    transform: skewX(0deg) translateX(0);
+    text-shadow: 0 0 8px rgba(255, 245, 18, 0.5);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.4s ease-out forwards;
+}
+
+.animate-slideUp {
+  animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-slideInLeft {
+  animation: slideInLeft 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-zoomIn {
+  animation: zoomIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-pulseGlow {
+  animation: pulseGlow 2s infinite ease-in-out;
+}
+
+.animate-hudCrop {
+  animation: hudCrop 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-distort {
+  animation: textDistort 3.5s infinite ease-in-out;
+}
+
+/* Sequential Animation Delay Helpers */
+.animation-delay-100 {
+  animation-delay: 100ms;
+}
+
+.animation-delay-200 {
+  animation-delay: 200ms;
+}
+
+.animation-delay-300 {
+  animation-delay: 300ms;
+}
+
+.animation-delay-400 {
+  animation-delay: 400ms;
+}
+
+.animation-delay-500 {
+  animation-delay: 500ms;
+}
+
+/* Transition utility overrides */
+.btn-transition {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-transition {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
