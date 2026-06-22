@@ -861,7 +861,7 @@ export default function AdminDashboardInternal() {
 
               {/* Add / Edit Popup Modal Backdrop */}
               {showModal && (
-                <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 backdrop-blur-sm overflow-y-auto">
+                <div className="fixed inset-0 bg-black/80 flex justify-center items-start overflow-y-auto z-50 p-4 backdrop-blur-sm">
                   <div className="pubg-hud-panel p-6 max-w-lg w-full space-y-5 animate-zoomIn my-8 bg-[#12120e] relative border-2 border-eb-yellow">
                     
                     {/* HUD Corner Brackets */}
