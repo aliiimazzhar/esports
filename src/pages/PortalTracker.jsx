@@ -169,7 +169,7 @@ export default function PortalTracker() {
             Verification Pipeline Status
           </h3>
 
-          <div className="grid grid-cols-2 gap-2 max-w-md">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-w-md">
             {/* Step 1: Reviewing */}
             <div className={`p-4 border flex items-center justify-between transition-all ${
               paymentStatus === 'Pending' 

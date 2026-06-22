@@ -432,7 +432,7 @@ export default function AdminDashboardInternal() {
           {activeTab === 'registrations' && (
             <div className="space-y-6">
               {/* Sub-tabs header for Registrations */}
-              <div className="flex gap-4 border-b border-gray-900 pb-3">
+              <div className="flex gap-4 border-b border-gray-900 pb-3 overflow-x-auto whitespace-nowrap">
                 <button
                   onClick={() => setSubTabRegistrations('receipts')}
                   className={`pb-1 text-xs font-black uppercase tracking-wider transition-colors ${

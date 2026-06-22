@@ -398,7 +398,7 @@ app.post('/api/admin/events', requireAdmin, async (req, res) => {
     res.status(201).json(newEvent);
   } catch (err) {
     console.error('Error creating event:', err);
-    res.status(500).json({ error: 'Failed to deploy tournament.' });
+    res.status(500).json({ error: `Failed to deploy tournament: ${err.message}` });
   }
 });
 
@@ -455,7 +455,7 @@ app.put('/api/admin/events/:id', requireAdmin, async (req, res) => {
     res.json(event);
   } catch (err) {
     console.error('Error updating event:', err);
-    res.status(500).json({ error: 'Failed to update tournament.' });
+    res.status(500).json({ error: `Failed to update tournament: ${err.message}` });
   }
 });
 

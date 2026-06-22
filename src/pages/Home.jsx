@@ -179,7 +179,7 @@ export default function Home() {
                   </div>
 
                   {/* Entry details */}
-                  <div className="grid grid-cols-3 gap-4 bg-black/60 p-4 border border-gray-950 rounded">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-black/60 p-4 border border-gray-950 rounded">
                     <div className="space-y-0.5">
                       <span className="text-[8px] text-gray-500 uppercase font-black tracking-wider">Solo Registration Fee</span>
                       <p className="text-md font-black text-white flex items-center gap-0.5">
