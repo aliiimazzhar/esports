@@ -52,6 +52,29 @@ const ADMIN_PASSCODE = process.env.ADMIN_PASSCODE || 'admin123';
 app.use(cors());
 app.use(express.json());
 
+// MongoDB Connection Helper and Middleware
+const mongoURI = process.env.MONGODB_URI || 'mongodb://localhost:27017/esports';
+
+const connectDB = async () => {
+  if (mongoose.connection.readyState >= 1) return;
+  await mongoose.connect(mongoURI, {
+    serverSelectionTimeoutMS: 5000,
+    bufferCommands: false
+  });
+};
+
+const ensureDbConnected = async (req, res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    console.error('Database connection middleware failed:', err);
+    res.status(500).json({ error: 'Database connection failed: ' + err.message });
+  }
+};
+
+app.use(ensureDbConnected);
+
 // Ensure uploads directory exists (use /tmp in serverless environment)
 const uploadsDir = process.env.VERCEL ? '/tmp' : path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) {
@@ -83,14 +106,6 @@ const upload = multer({
   }
 });
 
-// MongoDB Connection
-const mongoURI = process.env.MONGODB_URI || 'mongodb://localhost:27017/esports';
-mongoose.connect(mongoURI, {
-  serverSelectionTimeoutMS: 5000,
-  bufferCommands: false
-})
-  .then(() => console.log('Connected to MongoDB database successfully'))
-  .catch(err => console.error('MongoDB database connection error:', err));
 
 // Admin Passcode Protection Middleware
 const requireAdmin = (req, res, next) => {
