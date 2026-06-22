@@ -1,3 +1,8 @@
+if (!process.env.VERCEL) {
+  const dns = require('dns');
+  dns.setServers(['1.1.1.1', '1.0.0.1']);
+}
+
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -81,7 +86,8 @@ const upload = multer({
 // MongoDB Connection
 const mongoURI = process.env.MONGODB_URI || 'mongodb://localhost:27017/esports';
 mongoose.connect(mongoURI, {
-  serverSelectionTimeoutMS: 5000
+  serverSelectionTimeoutMS: 5000,
+  bufferCommands: false
 })
   .then(() => console.log('Connected to MongoDB database successfully'))
   .catch(err => console.error('MongoDB database connection error:', err));
@@ -312,8 +318,9 @@ app.post('/api/registrations/submit-proof', upload.single('matchProofScreenshot'
       return res.status(400).json({ error: 'Bad Request: Match proof screenshot has already been submitted for this roster.' });
     }
 
-    // Save proof screenshot path
-    registration.matchProofScreenshot = `/uploads/${req.file.filename}`;
+    // Upload to Cloudinary
+    const proofScreenshotUrl = await uploadToCloudinary(req.file.path);
+    registration.matchProofScreenshot = proofScreenshotUrl;
     await registration.save();
 
     res.json({
