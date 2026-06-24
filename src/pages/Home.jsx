@@ -5,13 +5,21 @@ import { Trophy, Search, Calendar, Swords, Shield, AlertTriangle, Crosshair, Map
 import RegisterModal from '../components/RegisterModal';
 
 export default function Home() {
-  const { events, activeEvent, loadingActiveEvent, searchPortal } = useContext(AppContext);
+  const { events, activeEvent, loadingActiveEvent, searchPortal, user } = useContext(AppContext);
   const navigate = useNavigate();
 
   const [searchUid, setSearchUid] = useState('');
   const [searchError, setSearchError] = useState('');
   const [searching, setSearching] = useState(false);
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
+
+  const handleRegisterClick = () => {
+    if (user) {
+      navigate('/dashboard');
+    } else {
+      navigate('/signin?redirect=dashboard');
+    }
+  };
 
   const handleSearchSubmit = async (e) => {
     e.preventDefault();
@@ -62,13 +70,13 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-black text-gray-250 relative overflow-hidden">
-      
+
       {/* Global Background Grid Overlay */}
       <div className="absolute inset-0 opacity-[0.04] bg-[linear-gradient(to_right,#EBB014_1px,transparent_1px),linear-gradient(to_bottom,#EBB014_1px,transparent_1px)] bg-[size:3rem_3rem] pointer-events-none"></div>
 
       {/* 1. Tactical Hero Banner - Brand Header */}
       <section className="relative py-16 px-4 md:px-8 overflow-hidden bg-transparent flex items-center justify-center">
-        
+
         {/* Rotating Background Reticle */}
         <div className="absolute w-[300px] h-[300px] md:w-[400px] md:h-[400px] text-eb-yellow opacity-20 pointer-events-none animate-spin" style={{ animationDuration: '40s' }}>
           <svg viewBox="0 0 100 100" className="w-full h-full">
@@ -80,7 +88,7 @@ export default function Home() {
 
         <div className="max-w-4xl mx-auto text-center space-y-6 relative z-10 animate-slideUp w-full">
           <div className="border border-white/5 p-8 md:p-12 bg-[#12120e]/60 backdrop-blur-sm relative animate-hudCrop">
-            
+
             {/* HUD Bracket Corners */}
             <div className="absolute top-0 left-0 w-6 h-6 border-t-2 border-l-2 border-eb-yellow"></div>
             <div className="absolute top-0 right-0 w-6 h-6 border-t-2 border-r-2 border-eb-yellow"></div>
@@ -108,7 +116,7 @@ export default function Home() {
 
       {/* 2. Active Event Hub & Standings Grid */}
       <section className="py-12 px-4 md:px-8 max-w-7xl mx-auto space-y-12">
-        
+
         {/* LIVE TOURNAMENT SECTION (If exists) */}
         {events.find(evt => evt.status === 'live') && (() => {
           const liveEvent = events.find(evt => evt.status === 'live');
@@ -156,140 +164,82 @@ export default function Home() {
         {events.find(evt => evt.status === 'active') ? (() => {
           const activeEvt = events.find(evt => evt.status === 'active');
           return (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-              
-              {/* Left Column: Active Event Info */}
-              <div className="lg:col-span-2 space-y-6">
-                
-                {/* Event Hub Card */}
-                <div className="pubg-hud-panel p-6 space-y-5 animate-slideInLeft">
-                  <div className="flex items-center justify-between border-b border-gray-900 pb-3">
-                    <div className="space-y-0.5">
-                      <span className="text-[9px] text-eb-yellow font-black uppercase tracking-widest flex items-center gap-1">
-                        <Trophy className="w-3.5 h-3.5" />
-                        Active Tournament
-                      </span>
-                      <h2 className="text-2xl md:text-3xl font-extrabold uppercase text-white tracking-wide">
-                        {activeEvt.title}
-                      </h2>
-                    </div>
+            <div className="w-full space-y-6">
+
+              {/* Event Hub Card */}
+              <div className="pubg-hud-panel p-6 space-y-5 animate-slideInLeft">
+                <div className="flex items-center justify-between border-b border-gray-900 pb-3">
+                  <div className="space-y-0.5">
+                    <span className="text-[9px] text-eb-yellow font-black uppercase tracking-widest flex items-center gap-1">
+                      <Trophy className="w-3.5 h-3.5" />
+                      Active Tournament
+                    </span>
+                    <h2 className="text-2xl md:text-3xl font-extrabold uppercase text-white tracking-wide">
+                      {activeEvt.title}
+                    </h2>
+                  </div>
+                  <div className="flex flex-col items-end gap-1">
                     <span className="px-2.5 py-1 text-[9px] font-black uppercase bg-eb-yellow text-black select-none tracking-wider">
                       REGISTRATION OPEN
                     </span>
-                  </div>
-
-                  {/* Entry details */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-black/60 p-4 border border-gray-950 rounded">
-                    <div className="space-y-0.5">
-                      <span className="text-[8px] text-gray-500 uppercase font-black tracking-wider">Solo Registration Fee</span>
-                      <p className="text-md font-black text-white flex items-center gap-0.5">
-                        <DollarSign className="w-3.5 h-3.5 text-eb-yellow" />
-                        PKR {activeEvt.soloEntryFee?.toLocaleString()}
-                      </p>
-                    </div>
-                    <div className="space-y-0.5">
-                      <span className="text-[8px] text-gray-500 uppercase font-black tracking-wider">Team Registration Fee</span>
-                      <p className="text-md font-black text-white flex items-center gap-0.5">
-                        <DollarSign className="w-3.5 h-3.5 text-eb-yellow" />
-                        PKR {activeEvt.teamEntryFee?.toLocaleString()}
-                      </p>
-                    </div>
-                    <div className="space-y-0.5 text-right">
-                      <span className="text-[8px] text-gray-500 uppercase font-black tracking-wider">Duration</span>
-                      <p className="text-md font-black text-gray-300">{activeEvt.numberOfDays || 1} {activeEvt.numberOfDays === 1 ? 'Day' : 'Days'}</p>
-                    </div>
-                  </div>
-
-                  {/* Timing Coordinates */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-semibold">
-                    <div className="p-3 border-l-4 border-tan bg-tan/5 space-y-1">
-                      <span className="text-[9px] text-gray-400 uppercase font-black tracking-wider block">Registration Deadline</span>
-                      <p className="text-white font-bold">{formatDateTime(activeEvt.registrationDeadline)}</p>
-                    </div>
-                    <div className="p-3 border-l-4 border-eb-yellow bg-eb-yellow/5 space-y-1">
-                      <span className="text-[9px] text-gray-400 uppercase font-black tracking-wider block">Match Timing</span>
-                      <p className="text-white font-bold">{formatDateTime(activeEvt.matchStartTime)}</p>
-                    </div>
-                  </div>
-
-                  {/* Dynamic Tournament Description */}
-                  {activeEvt.description && (
-                    <div className="space-y-2 text-xs">
-                      <span className="text-gray-400 uppercase text-[9px] font-black tracking-wider block">Tournament Description:</span>
-                      <p className="text-gray-405 text-gray-300 leading-relaxed font-medium whitespace-pre-line bg-[#12120e]/50 p-3 border border-white/5">
-                        {activeEvt.description}
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Register Action */}
-                  <div className="pt-2">
-                    <button
-                      onClick={() => setIsRegisterOpen(true)}
-                      className="pubg-btn-primary w-full text-center font-black"
-                    >
-                      Register for Tournament
-                    </button>
+                    <span className="px-2 py-0.5 text-[8px] font-black uppercase bg-black border border-gray-800 text-gold select-none tracking-wider font-mono">
+                      Format: {activeEvt.type || 'Squad'}
+                    </span>
                   </div>
                 </div>
 
-              </div>
-
-              {/* Right Column: Room Details */}
-              <div className="space-y-6">
-                <div className="pubg-hud-panel cyber-card p-6 space-y-5 shadow-glow-yellow-sm animate-zoomIn">
-                  <div className="text-center space-y-2 border-b border-gray-900 pb-4">
-                    <Search className="w-10 h-10 text-eb-yellow mx-auto animate-pulse" />
-                    <h3 className="text-sm font-black text-white uppercase tracking-widest">
-                      Room Details
-                    </h3>
-                    <p className="text-[10px] text-gray-500 font-medium leading-relaxed">
-                      Enter your PUBG Character ID to get Room Details or Upload Match Proof.
+                {/* Entry details */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-black/60 p-4 border border-gray-950 rounded">
+                  <div className="space-y-0.5">
+                    <span className="text-[8px] text-gray-500 uppercase font-black tracking-wider">Solo Registration Fee</span>
+                    <p className="text-md font-black text-white flex items-center gap-0.5">
+                      <DollarSign className="w-3.5 h-3.5 text-eb-yellow" />
+                      PKR {activeEvt.soloEntryFee?.toLocaleString()}
                     </p>
                   </div>
-
-                  <form onSubmit={handleSearchSubmit} className="space-y-4">
-                    <div className="space-y-1.5">
-                      <label className="text-[9px] font-black text-gray-400 uppercase tracking-wider block">
-                        PUBG Character UID
-                      </label>
-                      <input
-                        type="text"
-                        value={searchUid}
-                        onChange={(e) => {
-                          setSearchUid(e.target.value);
-                          if (searchError) setSearchError('');
-                        }}
-                        placeholder="e.g. 5123498321"
-                        className="pubg-input w-full font-mono text-center text-xs uppercase"
-                        disabled={searching}
-                        required
-                      />
-                    </div>
-
-                    {searchError && (
-                      <div className="p-3 bg-tan/10 border border-tan/30 text-eb-yellow text-[10px] font-bold flex items-start gap-2 rounded-sm leading-relaxed">
-                        <AlertTriangle className="w-4 h-4 flex-shrink-0 text-eb-yellow" />
-                        <span>{searchError}</span>
-                      </div>
-                    )}
-
-                    <button
-                      type="submit"
-                      disabled={searching}
-                      className={`w-full py-2.5 text-black font-black uppercase text-xs tracking-widest transition-all duration-300 ${
-                        searching
-                          ? 'bg-gray-900 text-gray-600 cursor-wait border border-gray-850'
-                          : 'bg-eb-yellow hover:scale-[1.01]'
-                      }`}
-                    >
-                      {searching ? 'Querying Registry...' : 'Get details'}
-                    </button>
-                  </form>
-
-                  <div className="p-3.5 bg-black/60 border border-gray-950 text-[10px] text-gray-500 leading-normal font-medium rounded-sm">
-                    * Any of the registered character UIDs in your squad submission can be input above to access the dashboard portal.
+                  <div className="space-y-0.5">
+                    <span className="text-[8px] text-gray-500 uppercase font-black tracking-wider">Team Registration Fee</span>
+                    <p className="text-md font-black text-white flex items-center gap-0.5">
+                      <DollarSign className="w-3.5 h-3.5 text-eb-yellow" />
+                      PKR {activeEvt.teamEntryFee?.toLocaleString()}
+                    </p>
                   </div>
+                  <div className="space-y-0.5 text-right">
+                    <span className="text-[8px] text-gray-500 uppercase font-black tracking-wider">Duration</span>
+                    <p className="text-md font-black text-gray-300">{activeEvt.numberOfDays || 1} {activeEvt.numberOfDays === 1 ? 'Day' : 'Days'}</p>
+                  </div>
+                </div>
+
+                {/* Timing Coordinates */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-semibold">
+                  <div className="p-3 border-l-4 border-tan bg-tan/5 space-y-1">
+                    <span className="text-[9px] text-gray-400 uppercase font-black tracking-wider block">Registration Deadline</span>
+                    <p className="text-white font-bold">{formatDateTime(activeEvt.registrationDeadline)}</p>
+                  </div>
+                  <div className="p-3 border-l-4 border-eb-yellow bg-eb-yellow/5 space-y-1">
+                    <span className="text-[9px] text-gray-400 uppercase font-black tracking-wider block">Match Timing</span>
+                    <p className="text-white font-bold">{formatDateTime(activeEvt.matchStartTime)}</p>
+                  </div>
+                </div>
+
+                {/* Dynamic Tournament Description */}
+                {activeEvt.description && (
+                  <div className="space-y-2 text-xs">
+                    <span className="text-gray-400 uppercase text-[9px] font-black tracking-wider block">Tournament Description:</span>
+                    <p className="text-gray-405 text-gray-300 leading-relaxed font-medium whitespace-pre-line bg-[#12120e]/50 p-3 border border-white/5">
+                      {activeEvt.description}
+                    </p>
+                  </div>
+                )}
+
+                {/* Register Action */}
+                <div className="pt-2">
+                  <button
+                    onClick={handleRegisterClick}
+                    className="pubg-btn-primary w-full text-center font-black"
+                  >
+                    {user ? 'Register via Dashboard' : 'Sign In to Register'}
+                  </button>
                 </div>
               </div>
 
@@ -306,19 +256,19 @@ export default function Home() {
           )
         )}
 
-        {/* More Upcoming Events Grid */}
+        {/* Upcoming Events Grid */}
         {events.filter(evt => evt.status === 'upcoming').length > 0 && (
           <div className="mt-16 space-y-6">
             <h3 className="text-xl font-black text-white uppercase tracking-widest border-b border-gray-900 pb-3 flex items-center gap-2">
               <Calendar className="w-6 h-6 text-eb-yellow" />
-              More Upcoming Events
+              Upcoming Events
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {events.filter(evt => evt.status === 'upcoming').map((evt) => (
                 <div key={evt._id} className="pubg-hud-panel cyber-card p-5 space-y-4">
                   <div className="flex items-center justify-between border-b border-gray-900 pb-2">
                     <span className="text-[10px] text-eb-yellow font-black uppercase tracking-widest">
-                      Upcoming Mission
+                      Upcoming: {evt.type || 'Squad'} format
                     </span>
                     <span className="px-2 py-0.5 bg-eb-yellow/10 text-eb-yellow border border-eb-yellow/20 text-[8px] font-mono uppercase font-black">
                       {evt.map || 'Erangel'}

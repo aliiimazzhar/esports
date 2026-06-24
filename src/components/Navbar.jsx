@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Trophy, Menu, X, Swords, ListOrdered } from 'lucide-react';
+import { Trophy, Menu, X, Swords, ListOrdered, LogOut, LogIn, UserPlus, User } from 'lucide-react';
+import { AppContext } from '../context/AppContext';
 
 export default function Navbar() {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { user, logoutUser } = useContext(AppContext);
 
   const isActive = (path) => location.pathname === path;
 
@@ -19,6 +21,9 @@ export default function Navbar() {
     { label: 'Home', path: '/', icon: Trophy },
     { label: 'Leader board', path: '/leaderboard', icon: ListOrdered },
   ];
+  if (user) {
+    navLinks.push({ label: 'Dashboard', path: '/dashboard', icon: User });
+  }
 
   return (
     <nav className="sticky top-0 z-50 bg-[#090907]/90 backdrop-blur-md border-b border-orig-yellow/20 px-4 py-3 md:px-8">
@@ -47,6 +52,42 @@ export default function Navbar() {
               </Link>
             );
           })}
+
+          {/* User auth links */}
+          {user ? (
+            <div className="flex items-center gap-4 border-l border-white/10 pl-6">
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-eb-yellow/10 border border-eb-yellow/30 rounded-sm">
+                <User className="w-3.5 h-3.5 text-eb-yellow" />
+                <span className="text-xs font-mono font-bold text-white uppercase tracking-wider">
+                  {user.uid}
+                </span>
+              </div>
+              <button
+                onClick={logoutUser}
+                className="flex items-center gap-1 text-xs uppercase tracking-wider font-bold text-gray-405 hover:text-tan transition-colors"
+                title="Sign Out"
+              >
+                <LogOut className="w-4 h-4" />
+                <span>Logout</span>
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-4 border-l border-white/10 pl-6">
+              <Link
+                to="/signin"
+                className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-gray-300 hover:text-white transition-colors"
+              >
+                <LogIn className="w-4 h-4 text-eb-yellow" />
+                <span>Sign In</span>
+              </Link>
+              <Link
+                to="/signup"
+                className="px-4 py-1.5 bg-eb-yellow text-black font-black text-xs uppercase tracking-wider hover:scale-105 transition-all duration-300"
+              >
+                <span>Sign Up</span>
+              </Link>
+            </div>
+          )}
         </div>
 
         {/* Mobile Hamburger Menu Toggle */}
@@ -63,7 +104,7 @@ export default function Navbar() {
 
       {/* Mobile Menu Panel */}
       {mobileMenuOpen && (
-        <div className="md:hidden mt-3 bg-black border border-orig-yellow/20 rounded-lg p-4 space-y-3 animate-fadeIn">
+        <div className="md:hidden mt-3 bg-black border border-orig-yellow/20 rounded-lg p-4 space-y-4 animate-fadeIn">
           <div className="flex flex-col gap-3">
             {navLinks.map((link) => {
               const Icon = link.icon;
@@ -83,6 +124,49 @@ export default function Navbar() {
                 </Link>
               );
             })}
+          </div>
+
+          {/* Mobile Auth Sections */}
+          <div className="border-t border-white/5 pt-3 flex flex-col gap-3">
+            {user ? (
+              <>
+                <div className="flex items-center gap-2.5 px-4 py-2 bg-eb-yellow/5 border border-eb-yellow/20 rounded-md">
+                  <User className="w-4.5 h-4.5 text-eb-yellow" />
+                  <span className="text-sm font-mono font-bold text-white uppercase tracking-wider">
+                    {user.uid}
+                  </span>
+                </div>
+                <button
+                  onClick={() => {
+                    logoutUser();
+                    setMobileMenuOpen(false);
+                  }}
+                  className="flex items-center gap-3 px-4 py-2.5 rounded-md text-sm font-bold text-gray-400 hover:text-white hover:bg-white/5 text-left w-full"
+                >
+                  <LogOut className="w-5 h-5 text-tan" />
+                  <span>Sign Out</span>
+                </button>
+              </>
+            ) : (
+              <>
+                <Link
+                  to="/signin"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center gap-3 px-4 py-2.5 rounded-md text-sm font-bold text-gray-300 hover:text-white hover:bg-white/5"
+                >
+                  <LogIn className="w-5 h-5 text-eb-yellow" />
+                  <span>Sign In</span>
+                </Link>
+                <Link
+                  to="/signup"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center justify-center gap-2 px-4 py-2.5 bg-eb-yellow text-black font-black rounded-md text-sm text-center"
+                >
+                  <UserPlus className="w-5 h-5" />
+                  <span>Sign Up</span>
+                </Link>
+              </>
+            )}
           </div>
         </div>
       )}

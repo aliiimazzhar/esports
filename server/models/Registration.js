@@ -12,6 +12,9 @@ const registrationSchema = new mongoose.Schema({
   paymentScreenshot: { type: String, required: true }, // Cloudinary URL
   paymentStatus: { type: String, enum: ['Pending', 'Approved', 'Rejected'], default: 'Pending' },
   matchProofScreenshot: { type: String, default: "" }, // Uploaded post-match by the player
+  rank: { type: Number, default: null }, // Final rank in the tournament
+  points: { type: Number, default: 0 }, // Total points achieved
+  playerKills: { type: [Number], default: [] }, // Kills per player for squad tournaments
   createdAt: { type: Date, default: Date.now }
 });
 

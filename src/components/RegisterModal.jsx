@@ -1,9 +1,9 @@
-import React, { useContext, useState } from 'react';
+import React, { useContext, useState, useEffect } from 'react';
 import { AppContext } from '../context/AppContext';
 import { Upload, FileImage, CheckCircle, Plus, Trash2, Info, AlertTriangle, Lock } from 'lucide-react';
 
 export default function RegisterModal({ isOpen, onClose }) {
-  const { activeEvent, submitRegistration } = useContext(AppContext);
+  const { activeEvent, submitRegistration, user } = useContext(AppContext);
 
   // Tab: 'solo' | 'team'
   const [activeTab, setActiveTab] = useState('solo');
@@ -12,9 +12,12 @@ export default function RegisterModal({ isOpen, onClose }) {
   const [soloCharacterId, setSoloCharacterId] = useState('');
   const [soloInGameName, setSoloInGameName] = useState('');
 
-  // Team fields (Dynamic list of players: characterId, inGameName)
+  // Team fields (Exactly 4 players for Squad)
   const [teamPlayers, setTeamPlayers] = useState([
-    { characterId: '', inGameName: '' } // Player 1
+    { characterId: '', inGameName: '' },
+    { characterId: '', inGameName: '' },
+    { characterId: '', inGameName: '' },
+    { characterId: '', inGameName: '' }
   ]);
 
   // Shared fields
@@ -29,6 +32,44 @@ export default function RegisterModal({ isOpen, onClose }) {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [successReg, setSuccessReg] = useState(null);
+
+  // Auto-fill user details when modal opens
+  useEffect(() => {
+    if (isOpen && user) {
+      if (!soloCharacterId) setSoloCharacterId(user.uid);
+      if (!contactPhone) setContactPhone(user.phoneNumber);
+      if (teamPlayers.length === 4 && !teamPlayers[0].characterId) {
+        setTeamPlayers([
+          { characterId: user.uid, inGameName: teamPlayers[0].inGameName },
+          { characterId: '', inGameName: '' },
+          { characterId: '', inGameName: '' },
+          { characterId: '', inGameName: '' }
+        ]);
+      }
+    }
+  }, [isOpen, user]);
+
+  // Auto-set registration tab based on tournament type
+  useEffect(() => {
+    if (isOpen && activeEvent) {
+      if (activeEvent.type === 'Solo') {
+        setActiveTab('solo');
+      } else {
+        setActiveTab('team');
+      }
+    }
+  }, [isOpen, activeEvent]);
+
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isOpen]);
 
   if (!isOpen || !activeEvent) return null;
 
@@ -167,7 +208,12 @@ export default function RegisterModal({ isOpen, onClose }) {
     setSuccessReg(null);
     setSoloCharacterId('');
     setSoloInGameName('');
-    setTeamPlayers([{ characterId: '', inGameName: '' }]);
+    setTeamPlayers([
+      { characterId: '', inGameName: '' },
+      { characterId: '', inGameName: '' },
+      { characterId: '', inGameName: '' },
+      { characterId: '', inGameName: '' }
+    ]);
     setContactPhone('');
     setWhatsappNumber('');
     setTransactionId('');
@@ -182,8 +228,8 @@ export default function RegisterModal({ isOpen, onClose }) {
   const totalAmount = entryFee + platformFee;
 
   return (
-    <div className="fixed inset-0 bg-black/85 flex items-center justify-center z-50 p-4 backdrop-blur-md">
-      <div className="pubg-hud-panel p-6 max-w-lg w-full bg-[#12120e] relative border-2 border-eb-yellow rounded-none max-h-[90vh] flex flex-col animate-zoomIn">
+    <div className="fixed inset-0 bg-black/85 flex justify-center items-start overflow-y-auto z-[100] p-4 backdrop-blur-md">
+      <div className="pubg-hud-panel p-6 max-w-lg w-full bg-[#12120e] relative border-2 border-eb-yellow rounded-none my-8 animate-zoomIn">
         
         {/* HUD Corner Brackets */}
         <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-eb-yellow !m-0"></div>
@@ -204,7 +250,7 @@ export default function RegisterModal({ isOpen, onClose }) {
           </button>
         </div>
 
-        <div className="flex-grow overflow-y-auto pr-1 mt-4 space-y-5 text-left">
+        <div className="mt-4 space-y-5 text-left">
 
         {success ? (
           <div className="text-center space-y-6 py-6 animate-fadeIn">
@@ -246,27 +292,35 @@ export default function RegisterModal({ isOpen, onClose }) {
         ) : (
           <div className="space-y-4">
             
-            {/* Tabs Selector */}
-            <div className="grid grid-cols-2 gap-2 bg-black p-1 border border-white/5">
-              <button
-                type="button"
-                onClick={() => { setActiveTab('solo'); setErrors({}); }}
-                className={`py-2 text-[10px] font-black uppercase tracking-wider transition-all duration-200 ${
-                  activeTab === 'solo' ? 'bg-eb-yellow text-black' : 'text-gray-400 hover:text-white'
-                }`}
-              >
-                Solo Registration
-              </button>
-              <button
-                type="button"
-                onClick={() => { setActiveTab('team'); setErrors({}); }}
-                className={`py-2 text-[10px] font-black uppercase tracking-wider transition-all duration-200 ${
-                  activeTab === 'team' ? 'bg-eb-yellow text-black' : 'text-gray-400 hover:text-white'
-                }`}
-              >
-                Team Registration
-              </button>
-            </div>
+            {/* Format Banner or Tabs Selector */}
+            {activeEvent.type === 'Squad' ? (
+              <div className="grid grid-cols-2 gap-2 bg-black p-1 border border-white/5">
+                <button
+                  type="button"
+                  onClick={() => { setActiveTab('solo'); setErrors({}); }}
+                  className={`py-2 text-[10px] font-black uppercase tracking-wider transition-all duration-200 ${
+                    activeTab === 'solo' ? 'bg-eb-yellow text-black' : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  Solo Registration
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setActiveTab('team'); setErrors({}); }}
+                  className={`py-2 text-[10px] font-black uppercase tracking-wider transition-all duration-200 ${
+                    activeTab === 'team' ? 'bg-eb-yellow text-black' : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  Team Registration
+                </button>
+              </div>
+            ) : (
+              <div className="text-center py-2 bg-black border border-white/5 rounded-sm">
+                <span className="text-[10px] font-black uppercase tracking-widest text-eb-yellow">
+                  Format: Solo Tournament Registration
+                </span>
+              </div>
+            )}
 
             {errors.submit && (
               <div className="p-3 bg-tan/10 border border-tan/30 text-gold text-[10px] font-bold rounded-sm flex items-start gap-1">
@@ -312,16 +366,9 @@ export default function RegisterModal({ isOpen, onClose }) {
 
               {/* TEAM TAB FORM FIELDS */}
               {activeTab === 'team' && (
-                <div className="space-y-3 max-h-60 overflow-y-auto pr-1 border border-white/5 p-3 bg-black/40">
+                <div className="space-y-3 border border-white/5 p-3 bg-black/40">
                   <div className="flex justify-between items-center pb-1 border-b border-gray-900">
-                    <span className="text-[9px] font-black text-white uppercase tracking-wider">Roster Players</span>
-                    <button
-                      type="button"
-                      onClick={addPlayerSlot}
-                      className="px-2 py-0.5 bg-black border border-gray-800 text-[8px] font-black uppercase text-gray-400 hover:text-white hover:border-eb-yellow flex items-center gap-0.5"
-                    >
-                      <Plus className="w-3 h-3" /> Add Player
-                    </button>
+                    <span className="text-[9px] font-black text-white uppercase tracking-wider">Squad Roster (Exactly 4 Players)</span>
                   </div>
 
                   <div className="space-y-3">
@@ -329,15 +376,6 @@ export default function RegisterModal({ isOpen, onClose }) {
                       <div key={idx} className="space-y-2 border-b border-gray-950 pb-2.5 last:border-b-0 last:pb-0">
                         <div className="flex items-center justify-between">
                           <span className="text-[8px] font-bold text-orig-yellow">PLAYER {idx + 1} {idx === 0 && '(Leader)'}</span>
-                          {teamPlayers.length > 1 && (
-                            <button
-                              type="button"
-                              onClick={() => removePlayerSlot(idx)}
-                              className="text-[8px] font-bold text-tan hover:text-red-500 uppercase font-mono"
-                            >
-                              Remove
-                            </button>
-                          )}
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

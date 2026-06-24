@@ -18,7 +18,8 @@ export default function AdminDashboardInternal() {
     fetchPendingRegistrations,
     fetchApprovedRegistrations,
     auditRegistrationStatus,
-    fetchMatchProofs
+    fetchMatchProofs,
+    getAdminHeaders
   } = useContext(AppContext);
 
   const navigate = useNavigate();
@@ -46,6 +47,7 @@ export default function AdminDashboardInternal() {
   const [deployError, setDeployError] = useState('');
   const [deploying, setDeploying] = useState(false);
   const [tourneyStatus, setTourneyStatus] = useState('active');
+  const [tourneyType, setTourneyType] = useState('Squad');
   const [map, setMap] = useState('Erangel');
   const [description, setDescription] = useState('');
 
@@ -66,6 +68,7 @@ export default function AdminDashboardInternal() {
   // Tab 5: Leaderboard html editor states
   const [leaderHtml, setLeaderHtml] = useState('');
   const [leaderSuccess, setLeaderSuccess] = useState('');
+  const [localResults, setLocalResults] = useState({});
 
   // Local helper to format Date into datetime-local input string
   const toDatetimeLocal = (isoStr) => {
@@ -147,9 +150,28 @@ export default function AdminDashboardInternal() {
         } else if (subTabRegistrations === 'proofs') {
           loadMatchProofs();
         }
+      } else if (activeTab === 'leaderboard') {
+        loadApprovedRegistrations();
       }
     }
   }, [activeTab, subTabRegistrations, adminPasscode, loadPendingRegistrations, loadApprovedRegistrations, loadMatchProofs]);
+
+  // Initialize localResults when approvedRegs changes
+  useEffect(() => {
+    if (approvedRegs) {
+      const results = {};
+      approvedRegs.forEach(reg => {
+        results[reg._id] = {
+          rank: reg.rank !== null && reg.rank !== undefined ? reg.rank : '',
+          points: reg.points !== null && reg.points !== undefined ? reg.points : '0',
+          playerKills: reg.playerKills && reg.playerKills.length > 0
+            ? reg.playerKills.map(String)
+            : Array(reg.allInGameNames?.length || 1).fill('0')
+        };
+      });
+      setLocalResults(results);
+    }
+  }, [approvedRegs]);
 
   // Passcode verification
   const handlePasscodeSubmit = async (e) => {
@@ -181,6 +203,7 @@ export default function AdminDashboardInternal() {
     setDeadline('');
     setStartTime('');
     setTourneyStatus('active');
+    setTourneyType('Squad');
     setMap('Erangel');
     setDescription('');
     setRoomId('');
@@ -199,6 +222,7 @@ export default function AdminDashboardInternal() {
     setDeadline(toDatetimeLocal(evt.registrationDeadline));
     setStartTime(toDatetimeLocal(evt.matchStartTime));
     setTourneyStatus(evt.status || 'active');
+    setTourneyType(evt.type || 'Squad');
     setMap(evt.map || 'Erangel');
     setDescription(evt.description || '');
     setRoomId(evt.roomId || '');
@@ -244,6 +268,7 @@ export default function AdminDashboardInternal() {
       isActive: true,
       status: tourneyStatus,
       map,
+      type: tourneyType,
       description,
       roomId,
       roomPassword
@@ -290,6 +315,31 @@ export default function AdminDashboardInternal() {
         }
       } else {
         alert(res.error || 'Audit operation failed.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Communication error.');
+    }
+  };
+
+  // Save results (rank and points) for a registered roster
+  const handleSaveResults = async (id, rank, points, playerKills) => {
+    try {
+      const response = await fetch(`/api/admin/registrations/${id}/results`, {
+        method: 'PUT',
+        headers: getAdminHeaders(),
+        body: JSON.stringify({ 
+          rank: rank ? Number(rank) : null, 
+          points: points !== undefined ? Number(points) : 0,
+          playerKills: playerKills ? playerKills.map(Number) : []
+        })
+      });
+      const data = await response.json();
+      if (response.ok) {
+        alert('Results updated successfully!');
+        loadApprovedRegistrations();
+      } else {
+        alert(data.error || 'Failed to update results.');
       }
     } catch (err) {
       console.error(err);
@@ -797,6 +847,7 @@ export default function AdminDashboardInternal() {
                       <tr className="bg-black text-gray-400 font-black uppercase tracking-wider border-b border-gray-900 text-[10px]">
                         <th className="p-4">Tournament Title</th>
                         <th className="p-4">Map</th>
+                        <th className="p-4">Type</th>
                         <th className="p-4">Status</th>
                         <th className="p-4">Solo / Team Fee</th>
                         <th className="p-4 text-center">Days</th>
@@ -810,6 +861,11 @@ export default function AdminDashboardInternal() {
                           <tr key={evt._id} className="hover:bg-black/40 transition-colors">
                             <td className="p-4 font-bold text-white uppercase">{evt.title}</td>
                             <td className="p-4 font-mono uppercase text-eb-yellow text-[11px]">{evt.map || 'Erangel'}</td>
+                            <td className="p-4">
+                              <span className="px-2 py-0.5 rounded-sm bg-black border border-gray-800 text-gold text-[9px] font-black uppercase tracking-wider font-mono">
+                                {evt.type || 'Squad'}
+                              </span>
+                            </td>
                             <td className="p-4">
                               <span className={`px-2 py-0.5 rounded-sm font-black text-[9px] uppercase tracking-wider ${
                                 evt.status === 'live'
@@ -861,7 +917,7 @@ export default function AdminDashboardInternal() {
 
               {/* Add / Edit Popup Modal Backdrop */}
               {showModal && (
-                <div className="fixed inset-0 bg-black/80 flex justify-center items-start overflow-y-auto z-50 p-4 backdrop-blur-sm">
+                <div className="fixed inset-0 bg-black/80 flex justify-center items-start overflow-y-auto z-[100] p-4 backdrop-blur-sm">
                   <div className="pubg-hud-panel p-6 max-w-lg w-full space-y-5 animate-zoomIn my-8 bg-[#12120e] relative border-2 border-eb-yellow">
                     
                     {/* HUD Corner Brackets */}
@@ -904,20 +960,34 @@ export default function AdminDashboardInternal() {
                         />
                       </div>
 
-                      {/* Map Selector Dropdown */}
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">Select Map</label>
-                        <select
-                          value={map}
-                          onChange={(e) => setMap(e.target.value)}
-                          className="pubg-input w-full text-xs bg-black cursor-pointer uppercase font-mono"
-                        >
-                          <option value="Erangel">Erangel</option>
-                          <option value="Livik">Livik</option>
-                          <option value="Miramar">Miramar</option>
-                          <option value="Rondo">Rondo</option>
-                          <option value="Sanhok">Sanhok</option>
-                        </select>
+                      {/* Map & Type Selector Grid */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">Select Map</label>
+                          <select
+                            value={map}
+                            onChange={(e) => setMap(e.target.value)}
+                            className="pubg-input w-full text-xs bg-black cursor-pointer uppercase font-mono"
+                          >
+                            <option value="Erangel">Erangel</option>
+                            <option value="Livik">Livik</option>
+                            <option value="Miramar">Miramar</option>
+                            <option value="Rondo">Rondo</option>
+                            <option value="Sanhok">Sanhok</option>
+                          </select>
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">Tournament Type</label>
+                          <select
+                            value={tourneyType}
+                            onChange={(e) => setTourneyType(e.target.value)}
+                            className="pubg-input w-full text-xs bg-black cursor-pointer uppercase"
+                          >
+                            <option value="Solo">Solo</option>
+                            <option value="Squad">Squad</option>
+                          </select>
+                        </div>
                       </div>
 
                       {/* Reg Fee & Status */}
@@ -1066,52 +1136,144 @@ export default function AdminDashboardInternal() {
             </div>
           )}
 
-          {/* TAB 3: LEADERBOARD HTML GRID EDITOR */}
+          {/* TAB 3: LEADERBOARD MANUAL RESULT BUILDER */}
           {activeTab === 'leaderboard' && (
-            <div className="pubg-hud-panel p-6 max-w-3xl mx-auto space-y-5 animate-fadeIn">
-              <div className="border-b border-gray-900 pb-3">
-                <h3 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2">
-                  <ListOrdered className="w-5 h-5 text-eb-yellow" />
-                  Homepage Standings Editor
-                </h3>
-                <p className="text-gray-500 text-[10px] font-semibold mt-0.5">
-                  Paste custom tables, markdown, or HTML rows directly to show active standings on the Homepage grid.
-                </p>
+            <div className="pubg-hud-panel p-6 max-w-4xl mx-auto space-y-5 animate-fadeIn">
+              <div className="border-b border-gray-900 pb-3 flex justify-between items-center">
+                <div>
+                  <h3 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2">
+                    <ListOrdered className="w-5 h-5 text-eb-yellow" />
+                    Tournament Results Standings Manager
+                  </h3>
+                  <p className="text-gray-500 text-[10px] font-semibold mt-0.5">
+                    Manually assign ranks and points to approved team/solo rosters. Standings sync instantly to the Homepage.
+                  </p>
+                </div>
               </div>
 
-              {leaderSuccess && (
-                <div className="p-3 bg-[#10b981]/15 text-[#10b981] border border-[#10b981]/30 rounded-sm text-xs font-semibold">
-                  {leaderSuccess}
+              {!activeEvent ? (
+                <div className="text-center py-12 bg-black/40 border border-gray-900 rounded text-gray-550 text-xs">
+                  No active tournament configured. Ranks can only be assigned to approved rosters in active matches.
+                </div>
+              ) : approvedRegs.length > 0 ? (
+                <div className="overflow-x-auto border border-gray-900 rounded bg-black/40">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-black text-gray-400 font-black uppercase tracking-wider border-b border-gray-900 text-[10px]">
+                        <th className="p-4">Roster Lead (UID)</th>
+                        <th className="p-4">Type</th>
+                        <th className="p-4">Roster Players</th>
+                        <th className="p-4 text-center w-24">Assign Rank</th>
+                        <th className="p-4 text-center w-60">{activeEvent.type === 'Squad' ? 'Kills per Player' : 'Assign Points'}</th>
+                        <th className="p-4 text-right w-24">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-950 text-gray-300">
+                      {approvedRegs.map((reg) => (
+                        <tr key={reg._id} className="hover:bg-black/40 transition-colors">
+                          <td className="p-4 font-mono font-bold text-white uppercase">{reg.trackingUid}</td>
+                          <td className="p-4">
+                            <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase font-mono ${
+                              reg.registrationType === 'Solo' ? 'bg-eb-yellow/10 text-eb-yellow' : 'bg-blue-500/10 text-blue-400'
+                            }`}>
+                              {reg.registrationType || 'Team'}
+                            </span>
+                          </td>
+                          <td className="p-4">
+                            <div className="space-y-1 text-[11px]">
+                              {reg.allInGameNames?.map((name, pIdx) => (
+                                <span key={pIdx} className="inline-block bg-white/[0.02] border border-white/5 px-1.5 py-0.5 rounded-sm mr-1 font-mono">
+                                  {name} ({reg.allCharacterIds?.[pIdx]})
+                                </span>
+                              ))}
+                            </div>
+                          </td>
+                          <td className="p-4 text-center">
+                            <input
+                              type="number"
+                              min="1"
+                              value={localResults[reg._id]?.rank || ''}
+                              onChange={(e) => setLocalResults(prev => ({
+                                ...prev,
+                                [reg._id]: {
+                                  ...prev[reg._id],
+                                  rank: e.target.value
+                                }
+                              }))}
+                              placeholder="N/A"
+                              className="pubg-input w-20 text-center font-mono py-1 text-xs"
+                            />
+                          </td>
+                          <td className="p-4 text-center">
+                            {activeEvent.type === 'Squad' ? (
+                              <div className="flex flex-col gap-1.5 min-w-[220px] text-left mx-auto">
+                                {reg.allInGameNames?.map((name, pIdx) => (
+                                  <div key={pIdx} className="flex items-center justify-between gap-2 text-[10px]">
+                                    <span className="text-gray-400 font-mono truncate max-w-[120px]">{name}:</span>
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      value={localResults[reg._id]?.playerKills?.[pIdx] || '0'}
+                                      onChange={(e) => {
+                                        const val = e.target.value;
+                                        setLocalResults(prev => {
+                                          const currentKills = [...(prev[reg._id]?.playerKills || [])];
+                                          currentKills[pIdx] = val;
+                                          return {
+                                            ...prev,
+                                            [reg._id]: {
+                                              ...prev[reg._id],
+                                              playerKills: currentKills
+                                            }
+                                          };
+                                        });
+                                      }}
+                                      className="pubg-input w-16 text-center font-mono py-0.5 text-[10px]"
+                                    />
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <input
+                                type="number"
+                                min="0"
+                                value={localResults[reg._id]?.points || '0'}
+                                onChange={(e) => setLocalResults(prev => ({
+                                  ...prev,
+                                  [reg._id]: {
+                                    ...prev[reg._id],
+                                    points: e.target.value
+                                  }
+                                }))}
+                                placeholder="0"
+                                className="pubg-input w-20 text-center font-mono py-1 text-xs"
+                              />
+                            )}
+                          </td>
+                          <td className="p-4 text-right">
+                            <button
+                              type="button"
+                              onClick={() => handleSaveResults(
+                                reg._id,
+                                localResults[reg._id]?.rank,
+                                localResults[reg._id]?.points,
+                                localResults[reg._id]?.playerKills
+                              )}
+                              className="px-3 py-1 bg-eb-yellow hover:scale-[1.03] text-black font-black uppercase text-[9px] tracking-wider rounded transition-all duration-200"
+                            >
+                              Save
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="text-center py-16 bg-[#12120e] border border-white/5 rounded text-gray-500 text-xs">
+                  No approved registrations found in active tournament to rank.
                 </div>
               )}
-
-              <form onSubmit={handleLeaderboardSave} className="space-y-4">
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">Leaderboard standings HTML</label>
-                  <textarea
-                    value={leaderHtml}
-                    onChange={(e) => setLeaderHtml(e.target.value)}
-                    placeholder="e.g. <table class='w-full text-center'><thead><tr><th>Squad</th><th>Kills</th><th>Points</th></tr></thead><tbody><tr><td>Team Venom</td><td>24</td><td>45</td></tr></tbody></table>"
-                    className="pubg-input w-full font-mono text-xs h-64"
-                    required
-                  />
-                  <span className="text-[9px] text-gray-500 block leading-tight font-medium">
-                    * Make sure to write valid HTML tags (like table, tr, td, th). You can style them using tailwind classes (e.g. border-b border-gray-900, text-eb-yellow, py-2, font-mono).
-                  </span>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={!activeEvent}
-                  className={`w-full py-3 text-black font-black uppercase text-xs tracking-widest transition-all duration-300 ${
-                    !activeEvent
-                      ? 'bg-gray-950 text-gray-600 cursor-not-allowed border border-gray-900'
-                      : 'bg-eb-yellow hover:scale-[1.01]'
-                  }`}
-                >
-                  Save Standings grid
-                </button>
-              </form>
             </div>
           )}
 

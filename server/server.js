@@ -43,6 +43,16 @@ const uploadToCloudinary = async (filePath) => {
 
 const Event = require('./models/Event');
 const Registration = require('./models/Registration');
+const User = require('./models/User');
+const crypto = require('crypto');
+
+function hashPassword(password, salt) {
+  return crypto.pbkdf2Sync(password, salt, 1000, 64, 'sha512').toString('hex');
+}
+
+function generateSalt() {
+  return crypto.randomBytes(16).toString('hex');
+}
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -134,6 +144,52 @@ app.get('/api/events/active', async (req, res) => {
   }
 });
 
+// 1.2 Get dynamic leaderboard for the active event
+app.get('/api/events/active/leaderboard', async (req, res) => {
+  try {
+    const activeEvent = await Event.findOne({ isActive: true });
+    if (!activeEvent) {
+      return res.status(404).json({ error: 'No active tournament found.' });
+    }
+
+    // Fetch all approved registrations
+    let registrations = await Registration.find({
+      eventId: activeEvent._id,
+      paymentStatus: 'Approved'
+    });
+
+    // Custom sorting: rank (asc) first, then points/kills (desc)
+    registrations.sort((a, b) => {
+      const rankA = a.rank;
+      const rankB = b.rank;
+      const hasRankA = rankA !== null && rankA !== undefined;
+      const hasRankB = rankB !== null && rankB !== undefined;
+
+      if (hasRankA && !hasRankB) return -1;
+      if (!hasRankA && hasRankB) return 1;
+      if (hasRankA && hasRankB) {
+        if (rankA !== rankB) return rankA - rankB;
+      }
+
+      if (activeEvent.type === 'Squad') {
+        const sumKillsA = (a.playerKills || []).reduce((sum, k) => sum + (k || 0), 0);
+        const sumKillsB = (b.playerKills || []).reduce((sum, k) => sum + (k || 0), 0);
+        return sumKillsB - sumKillsA;
+      } else {
+        return (b.points || 0) - (a.points || 0);
+      }
+    });
+
+    res.json({
+      event: activeEvent,
+      standings: registrations
+    });
+  } catch (err) {
+    console.error('Error fetching dynamic leaderboard:', err);
+    res.status(500).json({ error: 'Failed to retrieve leaderboard data.' });
+  }
+});
+
 // 1.5 Get all upcoming events
 app.get('/api/events/upcoming', async (req, res) => {
   try {
@@ -195,23 +251,56 @@ app.post('/api/registrations', upload.single('paymentScreenshot'), async (req, r
       return res.status(400).json({ error: 'You must register at least 1 player with Character UID and In-game Name.' });
     }
 
-    if (registrationType === 'Solo' && (uids.length !== 1 || igNames.length !== 1)) {
-      return res.status(400).json({ error: 'Solo registrations must contain exactly 1 player.' });
+    // Validate roster sizes based on registration type and tournament type
+    if (activeEvent.type === 'Solo') {
+      if (registrationType !== 'Solo' || uids.length !== 1 || igNames.length !== 1) {
+        return res.status(400).json({ error: 'Solo tournaments only support individual (Solo) registrations.' });
+      }
+    } else if (activeEvent.type === 'Squad') {
+      if (registrationType === 'Team' && (uids.length !== 4 || igNames.length !== 4)) {
+        return res.status(400).json({ error: 'Squad registrations must contain exactly 4 players.' });
+      }
+      if (registrationType === 'Solo' && (uids.length !== 1 || igNames.length !== 1)) {
+        return res.status(400).json({ error: 'Solo registrations must contain exactly 1 player.' });
+      }
+    }
+
+    // Enforce max registration limit of 100 players total across all approved/pending rosters
+    const activeRegistrations = await Registration.find({
+      eventId: activeEvent._id,
+      paymentStatus: { $ne: 'Rejected' }
+    });
+
+    let totalPlayersCount = 0;
+    for (const reg of activeRegistrations) {
+      totalPlayersCount += reg.allCharacterIds.length;
+    }
+
+    if (totalPlayersCount + uids.length > 100) {
+      return res.status(400).json({ error: `Registration limit reached. Maximum players allowed is 100. Current total registered is ${totalPlayersCount} players.` });
+    }
+
+    // Validate that all character UIDs are signed-up users in the database
+    for (const uid of uids) {
+      const userExists = await User.findOne({ uid: { $regex: new RegExp(`^${uid.trim()}$`, 'i') } });
+      if (!userExists) {
+        return res.status(400).json({ error: `Character UID "${uid}" must create an account / sign up on the site first.` });
+      }
     }
 
     const trackingUid = uids[0]; // The first entered UID is the tracking index key
     
-    // Check if tracking UID has already registered for this active event
+    // Check if any of the UIDs have already registered for this active event
     const existing = await Registration.findOne({ 
       eventId: activeEvent._id,
       $or: [
-        { trackingUid: trackingUid },
-        { allCharacterIds: trackingUid }
+        { trackingUid: { $in: uids } },
+        { allCharacterIds: { $in: uids } }
       ]
     });
 
     if (existing) {
-      return res.status(400).json({ error: `Character ID ${trackingUid} is already registered (or pending validation) for this tournament.` });
+      return res.status(400).json({ error: `One or more Character UIDs in this roster are already registered (or pending validation) for this tournament.` });
     }
 
     // Upload to Cloudinary
@@ -298,6 +387,23 @@ app.get('/api/registrations/portal/:uid', async (req, res) => {
   }
 });
 
+// 3.5 Get all registrations for a user (GET /api/registrations/user/:uid)
+app.get('/api/registrations/user/:uid', async (req, res) => {
+  try {
+    const { uid } = req.params;
+    const registrations = await Registration.find({
+      $or: [
+        { trackingUid: uid },
+        { allCharacterIds: uid }
+      ]
+    }).populate('eventId');
+    res.json(registrations);
+  } catch (err) {
+    console.error('Error fetching user registrations:', err);
+    res.status(500).json({ error: 'Server lookup error.' });
+  }
+});
+
 // 4. Submit Post-Match Scoreboard Proof (POST /api/registrations/submit-proof)
 app.post('/api/registrations/submit-proof', upload.single('matchProofScreenshot'), async (req, res) => {
   try {
@@ -365,7 +471,7 @@ app.post('/api/admin/verify-passcode', (req, res) => {
 // Deploy a new tournament event
 app.post('/api/admin/events', requireAdmin, async (req, res) => {
   try {
-    const { title, soloEntryFee, teamEntryFee, numberOfDays, registrationDeadline, matchStartTime, isActive, status, map, description } = req.body;
+    const { title, soloEntryFee, teamEntryFee, numberOfDays, registrationDeadline, matchStartTime, isActive, status, map, description, type } = req.body;
     
     if (!title || soloEntryFee === undefined || teamEntryFee === undefined || !registrationDeadline || !matchStartTime) {
       return res.status(400).json({ error: 'Missing tournament parameter entries.' });
@@ -381,6 +487,7 @@ app.post('/api/admin/events', requireAdmin, async (req, res) => {
       isActive: isActive !== undefined ? isActive : true,
       status: status || 'active',
       map: map || 'Erangel',
+      type: type || 'Squad',
       description: description || ''
     });
 
@@ -421,7 +528,7 @@ app.post('/api/admin/events', requireAdmin, async (req, res) => {
 app.put('/api/admin/events/:id', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, soloEntryFee, teamEntryFee, numberOfDays, registrationDeadline, matchStartTime, isActive, status, map, description } = req.body;
+    const { title, soloEntryFee, teamEntryFee, numberOfDays, registrationDeadline, matchStartTime, isActive, status, map, description, type } = req.body;
 
     const event = await Event.findById(id);
     if (!event) {
@@ -437,6 +544,7 @@ app.put('/api/admin/events/:id', requireAdmin, async (req, res) => {
     if (isActive !== undefined) event.isActive = isActive;
     if (status) event.status = status;
     if (map) event.map = map;
+    if (type) event.type = type;
     if (description !== undefined) event.description = description;
 
     await event.save();
@@ -598,6 +706,33 @@ app.put('/api/admin/registrations/:id/status', requireAdmin, async (req, res) =>
   }
 });
 
+// Allot position (rank) and points/kills for registration results
+app.put('/api/admin/registrations/:id/results', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rank, points, playerKills } = req.body;
+
+    const registration = await Registration.findById(id);
+    if (!registration) {
+      return res.status(404).json({ error: 'Registration record not found.' });
+    }
+
+    registration.rank = rank ? Number(rank) : null;
+    if (points !== undefined) {
+      registration.points = Number(points);
+    }
+    if (playerKills !== undefined && Array.isArray(playerKills)) {
+      registration.playerKills = playerKills.map(Number);
+    }
+    await registration.save();
+
+    res.json({ message: 'Roster results updated successfully.', registration });
+  } catch (err) {
+    console.error('Error updating results:', err);
+    res.status(500).json({ error: 'Failed to update rank and points results.' });
+  }
+});
+
 // Fetch match proof screenshots
 app.get('/api/admin/registrations/proofs', requireAdmin, async (req, res) => {
   try {
@@ -615,6 +750,143 @@ app.get('/api/admin/registrations/proofs', requireAdmin, async (req, res) => {
   } catch (err) {
     console.error('Error fetching match proofs:', err);
     res.status(500).json({ error: 'Failed to fetch match proof screens.' });
+  }
+});
+
+/* ==========================================================================
+   USER AUTHENTICATION ENDPOINTS
+   ========================================================================== */
+
+// Sign Up Route
+app.post('/api/auth/signup', async (req, res) => {
+  try {
+    const { uid, phoneNumber, password, recoveryPassword } = req.body;
+    if (!uid || !phoneNumber || !password || !recoveryPassword) {
+      return res.status(400).json({ error: 'All fields are required.' });
+    }
+
+    const trimmedUid = uid.trim();
+    const trimmedPhone = phoneNumber.trim();
+
+    // Check if user already exists
+    const existingUser = await User.findOne({ uid: { $regex: new RegExp(`^${trimmedUid}$`, 'i') } });
+    if (existingUser) {
+      return res.status(400).json({ error: 'Character UID is already registered.' });
+    }
+
+    // Hash password
+    const salt = generateSalt();
+    const passwordHash = hashPassword(password, salt);
+
+    // Hash recovery phrase
+    const recoverySalt = generateSalt();
+    const recoveryPasswordHash = hashPassword(recoveryPassword.trim().toLowerCase(), recoverySalt);
+
+    const newUser = new User({
+      uid: trimmedUid,
+      phoneNumber: trimmedPhone,
+      passwordHash,
+      salt,
+      recoveryPasswordHash,
+      recoverySalt
+    });
+
+    await newUser.save();
+
+    res.status(201).json({
+      message: 'Account created successfully!',
+      user: {
+        uid: newUser.uid,
+        phoneNumber: newUser.phoneNumber
+      }
+    });
+  } catch (err) {
+    console.error('Error during signup:', err);
+    res.status(500).json({ error: 'Failed to register account.' });
+  }
+});
+
+// Sign In Route
+app.post('/api/auth/signin', async (req, res) => {
+  try {
+    const { uidOrPhone, password } = req.body;
+    if (!uidOrPhone || !password) {
+      return res.status(400).json({ error: 'UID/Phone and password are required.' });
+    }
+
+    const searchKey = uidOrPhone.trim();
+    // Search user by UID (case insensitive) or Phone Number
+    const user = await User.findOne({
+      $or: [
+        { uid: { $regex: new RegExp(`^${searchKey}$`, 'i') } },
+        { phoneNumber: searchKey }
+      ]
+    });
+
+    if (!user) {
+      return res.status(400).json({ error: 'Invalid UID/Phone or Password.' });
+    }
+
+    // Verify Password
+    const computedHash = hashPassword(password, user.salt);
+    if (computedHash !== user.passwordHash) {
+      return res.status(400).json({ error: 'Invalid UID/Phone or Password.' });
+    }
+
+    // Create a mock session token using sha256 of salt & time
+    const token = crypto.createHash('sha256').update(user.salt + Date.now()).digest('hex');
+
+    res.json({
+      message: 'Signed in successfully!',
+      token,
+      user: {
+        uid: user.uid,
+        phoneNumber: user.phoneNumber
+      }
+    });
+  } catch (err) {
+    console.error('Error during signin:', err);
+    res.status(500).json({ error: 'Failed to sign in.' });
+  }
+});
+
+// Recover Password Route
+app.post('/api/auth/recover', async (req, res) => {
+  try {
+    const { uid, phoneNumber, recoveryPassword, newPassword } = req.body;
+    if (!uid || !phoneNumber || !recoveryPassword || !newPassword) {
+      return res.status(400).json({ error: 'All fields are required.' });
+    }
+
+    const trimmedUid = uid.trim();
+    const trimmedPhone = phoneNumber.trim();
+
+    const user = await User.findOne({
+      uid: { $regex: new RegExp(`^${trimmedUid}$`, 'i') },
+      phoneNumber: trimmedPhone
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'No user matches this UID and Phone Number combination.' });
+    }
+
+    // Check recovery password
+    const computedRecoveryHash = hashPassword(recoveryPassword.trim().toLowerCase(), user.recoverySalt);
+    if (computedRecoveryHash !== user.recoveryPasswordHash) {
+      return res.status(400).json({ error: 'Incorrect recovery password phrase.' });
+    }
+
+    // Recovery is valid, update user password
+    const newSalt = generateSalt();
+    user.salt = newSalt;
+    user.passwordHash = hashPassword(newPassword, newSalt);
+
+    await user.save();
+
+    res.json({ message: 'Password reset successful! You can now sign in with your new password.' });
+  } catch (err) {
+    console.error('Error during password recovery:', err);
+    res.status(500).json({ error: 'Failed to recover password.' });
   }
 });
 

@@ -7,6 +7,10 @@ import Register from './pages/Register';
 import PortalTracker from './pages/PortalTracker';
 import Leaderboard from './pages/Leaderboard';
 import AdminDashboardInternal from './pages/AdminDashboardInternal';
+import SignUp from './pages/SignUp';
+import SignIn from './pages/SignIn';
+import RecoverPassword from './pages/RecoverPassword';
+import Dashboard from './pages/Dashboard';
 import { AppContextProvider } from './context/AppContext';
 
 function App() {
@@ -38,6 +42,10 @@ function App() {
               <Route path="/portal/:id" element={<PortalTracker />} />
               <Route path="/leaderboard" element={<Leaderboard />} />
               <Route path="/admin" element={<AdminDashboardInternal />} />
+              <Route path="/signup" element={<SignUp />} />
+              <Route path="/signin" element={<SignIn />} />
+              <Route path="/recover-password" element={<RecoverPassword />} />
+              <Route path="/dashboard" element={<Dashboard />} />
             </Routes>
           </main>
           <Footer />

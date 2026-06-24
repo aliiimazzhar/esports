@@ -7,6 +7,18 @@ export const AppContextProvider = ({ children }) => {
   const [activeEvent, setActiveEvent] = useState(null);
   const [loadingActiveEvent, setLoadingActiveEvent] = useState(true);
   const [adminPasscode, setAdminPasscode] = useState(null);
+  const [user, setUser] = useState(null);
+  const [token, setToken] = useState(null);
+
+  // Load session on mount
+  useEffect(() => {
+    const storedUser = localStorage.getItem('esports_user');
+    const storedToken = localStorage.getItem('esports_token');
+    if (storedUser && storedToken) {
+      setUser(JSON.parse(storedUser));
+      setToken(storedToken);
+    }
+  }, []);
 
   // Fetch active event on load
   const fetchActiveEvent = async () => {
@@ -58,6 +70,18 @@ export const AppContextProvider = ({ children }) => {
       return { ok: response.ok, status: response.status, data };
     } catch (err) {
       console.error('Portal lookup error:', err);
+      return { ok: false, error: 'Network communication error.' };
+    }
+  };
+
+  // Fetch user registrations by UID
+  const fetchUserRegistrations = async (uid) => {
+    try {
+      const response = await fetch(`/api/registrations/user/${encodeURIComponent(uid)}`);
+      const data = await response.json();
+      return { ok: response.ok, status: response.status, data };
+    } catch (err) {
+      console.error('Fetch user registrations error:', err);
       return { ok: false, error: 'Network communication error.' };
     }
   };
@@ -291,12 +315,76 @@ export const AppContextProvider = ({ children }) => {
     }
   };
 
+  // Sign Up User
+  const signUp = async (uid, phoneNumber, password, recoveryPassword) => {
+    try {
+      const response = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uid, phoneNumber, password, recoveryPassword })
+      });
+      const data = await response.json();
+      return { ok: response.ok, data };
+    } catch (err) {
+      console.error('Sign up error:', err);
+      return { ok: false, data: { error: 'Network communication error.' } };
+    }
+  };
+
+  // Sign In User
+  const signIn = async (uidOrPhone, password) => {
+    try {
+      const response = await fetch('/api/auth/signin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uidOrPhone, password })
+      });
+      const data = await response.json();
+      if (response.ok && data.user) {
+        setUser(data.user);
+        setToken(data.token);
+        localStorage.setItem('esports_user', JSON.stringify(data.user));
+        localStorage.setItem('esports_token', data.token);
+      }
+      return { ok: response.ok, data };
+    } catch (err) {
+      console.error('Sign in error:', err);
+      return { ok: false, data: { error: 'Network communication error.' } };
+    }
+  };
+
+  // Logout User
+  const logoutUser = () => {
+    setUser(null);
+    setToken(null);
+    localStorage.removeItem('esports_user');
+    localStorage.removeItem('esports_token');
+  };
+
+  // Recover Password
+  const recoverUserPassword = async (uid, phoneNumber, recoveryPassword, newPassword) => {
+    try {
+      const response = await fetch('/api/auth/recover', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uid, phoneNumber, recoveryPassword, newPassword })
+      });
+      const data = await response.json();
+      return { ok: response.ok, data };
+    } catch (err) {
+      console.error('Password recovery error:', err);
+      return { ok: false, data: { error: 'Network communication error.' } };
+    }
+  };
+
   return (
     <AppContext.Provider value={{
       events,
       activeEvent,
       loadingActiveEvent,
       adminPasscode,
+      user,
+      token,
       fetchActiveEvent,
       searchPortal,
       submitRegistration,
@@ -311,7 +399,13 @@ export const AppContextProvider = ({ children }) => {
       fetchPendingRegistrations,
       fetchApprovedRegistrations,
       auditRegistrationStatus,
-      fetchMatchProofs
+      fetchMatchProofs,
+      signUp,
+      signIn,
+      logoutUser,
+      recoverUserPassword,
+      fetchUserRegistrations,
+      getAdminHeaders
     }}>
       {children}
     </AppContext.Provider>
