@@ -1,11 +1,13 @@
 import React, { useContext, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppContext } from '../context/AppContext';
-import { 
-  Trophy, Search, Calendar, Swords, Shield, AlertTriangle, Crosshair, 
-  Map, DollarSign, ListOrdered, ChevronLeft, ChevronRight, Clock, Users, X
+import {
+  Trophy, Search, Calendar, Swords, Shield, AlertTriangle, Crosshair,
+  Map, DollarSign, ListOrdered, ChevronLeft, ChevronRight, Clock, Users, X, User
 } from 'lucide-react';
 import RegisterModal from '../components/RegisterModal';
+import logoImg from '../assets/logo.png';
+import mapsImg from '../assets/maps.png';
 
 export default function Home() {
   const { events, activeEvent, loadingActiveEvent, searchPortal, user, fetchTournamentReport } = useContext(AppContext);
@@ -120,14 +122,19 @@ export default function Home() {
     );
   }
 
-  // Filter Tournaments
-  const soloTournaments = events.filter(
-    (evt) => evt.type === 'Solo' && (evt.status === 'active' || evt.status === 'upcoming' || evt.status === 'live')
-  );
-  
-  const squadTournaments = events.filter(
-    (evt) => evt.type === 'Squad' && (evt.status === 'active' || evt.status === 'upcoming' || evt.status === 'live')
-  );
+  // Filter & Sort Tournaments: active events first, then live, then upcoming
+  const sortTournaments = (a, b) => {
+    const statusOrder = { 'active': 1, 'live': 2, 'upcoming': 3, 'ended': 4 };
+    return (statusOrder[a.status] || 99) - (statusOrder[b.status] || 99);
+  };
+
+  const soloTournaments = events
+    .filter((evt) => evt.type === 'Solo' && (evt.status === 'active' || evt.status === 'upcoming' || evt.status === 'live'))
+    .sort(sortTournaments);
+
+  const squadTournaments = events
+    .filter((evt) => evt.type === 'Squad' && (evt.status === 'active' || evt.status === 'upcoming' || evt.status === 'live'))
+    .sort(sortTournaments);
 
   const completedTournaments = events.filter((evt) => evt.status === 'ended');
 
@@ -138,50 +145,64 @@ export default function Home() {
 
       {/* 1. Tactical Hero Banner */}
       <section className="relative py-16 px-4 md:px-8 overflow-hidden bg-transparent flex items-center justify-center">
-        {/* Rotating Background Reticle */}
-        <div className="absolute w-[300px] h-[300px] md:w-[400px] md:h-[400px] text-eb-yellow opacity-20 pointer-events-none animate-spin" style={{ animationDuration: '40s' }}>
-          <svg viewBox="0 0 100 100" className="w-full h-full">
-            <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" strokeWidth="0.1" />
-            <circle cx="50" cy="50" r="30" fill="none" stroke="currentColor" strokeWidth="0.15" strokeDasharray="1 3" />
-            <path d="M 50 2 L 50 12 M 50 88 L 50 98 M 2 50 L 12 50 M 88 50 L 98 50" stroke="currentColor" strokeWidth="0.2" fill="none" />
-          </svg>
-        </div>
-
         <div className="max-w-4xl mx-auto text-center space-y-6 relative z-10 animate-slideUp w-full">
-          <div className="border border-white/5 p-8 md:p-12 bg-[#12120e]/60 backdrop-blur-sm relative animate-hudCrop">
-            {/* HUD Bracket Corners */}
-            <div className="absolute top-0 left-0 w-6 h-6 border-t-2 border-l-2 border-eb-yellow"></div>
-            <div className="absolute top-0 right-0 w-6 h-6 border-t-2 border-r-2 border-eb-yellow"></div>
-            <div className="absolute bottom-0 left-0 w-6 h-6 border-b-2 border-l-2 border-eb-yellow"></div>
-            <div className="absolute bottom-0 right-0 w-6 h-6 border-b-2 border-r-2 border-eb-yellow"></div>
+          <div className="relative border-2 border-eb-yellow shadow-glow-yellow-sm bg-gradient-to-b from-eb-yellow from-[20%] via-eb-yellow/55 via-[#232318] via-[#12120e] to-[#090907] overflow-hidden flex flex-col justify-center items-center w-full aspect-[16/9] md:aspect-[16/10] max-h-[500px]">
+            
+            {/* Maps Overlay covering the complete Hero box, matching dimensions exactly */}
+            <div className="absolute inset-0 w-full h-full opacity-[0.22] pointer-events-none z-0">
+              <img 
+                src={mapsImg} 
+                alt="PUBG Maps Overlay" 
+                className="w-full h-full object-fill"
+              />
+            </div>
 
-            <div className="space-y-4">
-              <div className="inline-flex items-center gap-2 px-3 py-1 bg-eb-yellow/10 border border-eb-yellow/30 text-eb-yellow text-xs font-black uppercase tracking-widest">
-                <Crosshair className="w-3.5 h-3.5 animate-spin" style={{ animationDuration: '6s' }} />
-                Dominating the local scene
-              </div>
+            <div className="p-4 md:p-8 flex flex-col items-center space-y-4 md:space-y-6 relative z-10 w-full">
+              {/* Enlarged Logo Image in Hero - No Animations */}
+              <img
+                src={logoImg}
+                alt="Epix Esports Logo"
+                className="h-28 md:h-36 w-auto object-contain z-10"
+              />
 
-              <h1 className="text-5xl md:text-8xl font-black tracking-tighter uppercase leading-none italic select-none text-eb-yellow">
-                ESPORTS
+              {/* Heading */}
+              <h1 className="text-4xl md:text-6xl font-black tracking-tight uppercase leading-none italic select-none text-black z-10">
+                Claim Your Chicken Dinner.
               </h1>
 
-              <p className="text-gray-400 text-xs md:text-sm max-w-xl mx-auto leading-relaxed font-medium">
-                The account-free PUBG Battlegrounds hosting portal. Retrieve custom room credentials, submit payment screenshots, or view detailed ended tournament reports.
+              {/* Description */}
+              <p className="text-black text-xs md:text-sm max-w-xl mx-auto leading-relaxed font-black z-10">
+                The ultimate tournament platform for local PUBG squads. Compete in high-stakes regional matches, climb the hometown leaderboards, and turn your casual drops into real rewards.
               </p>
+
+              {/* CTA Button - Yellow themed, simple rectangular */}
+              <button
+                onClick={() => {
+                  const target = document.getElementById('tournaments-section');
+                  if (target) {
+                    target.scrollIntoView({ behavior: 'smooth' });
+                  }
+                }}
+                className="z-20 mt-2 px-6 py-2.5 bg-eb-yellow text-black font-black uppercase text-xs tracking-widest rounded-none transition-all duration-300 hover:scale-105 border border-eb-yellow"
+              >
+                <span>
+                  Find a Tournament
+                </span>
+              </button>
             </div>
           </div>
         </div>
       </section>
 
       {/* 2. Main content area with Carousels */}
-      <section className="py-12 px-4 md:px-8 max-w-7xl mx-auto space-y-16">
-        
+      <section id="tournaments-section" className="py-12 px-4 md:px-8 max-w-7xl mx-auto space-y-16">
+
         {/* LIVE TOURNAMENT SECTION (If exists) */}
         {events.find(evt => evt.status === 'live') && (() => {
           const liveEvent = events.find(evt => evt.status === 'live');
           return (
             <div className="pubg-hud-panel p-6 space-y-5 animate-slideInLeft border-2 border-red-500 shadow-glow-yellow-sm">
-              <div className="flex items-center justify-between border-b border-gray-900 pb-3">
+              <div className="flex items-center justify-between border-b border-eb-yellow/30 pb-3">
                 <div className="space-y-0.5">
                   <span className="text-[10px] text-red-500 font-black uppercase tracking-widest flex items-center gap-1.5 animate-pulse">
                     <span className="w-2.5 h-2.5 rounded-full bg-red-500 inline-block animate-ping mr-1"></span>
@@ -221,22 +242,22 @@ export default function Home() {
 
         {/* SOLO TOURNAMENTS CAROUSEL */}
         <div className="space-y-4 relative">
-          <div className="flex justify-between items-center border-b border-gray-900 pb-3">
+          <div className="flex justify-between items-center border-b border-eb-yellow/30 pb-3">
             <h3 className="text-xl font-black text-white uppercase tracking-widest flex items-center gap-2">
-              <Swords className="w-6 h-6 text-eb-yellow" />
-              Solo Tournaments (Active/Upcoming)
+              <User className="w-6 h-6 text-eb-yellow" />
+              solo tournaments
             </h3>
             {soloTournaments.length > 0 && (
               <div className="flex gap-2">
-                <button 
+                <button
                   onClick={() => scrollLeft(soloScrollRef)}
-                  className="p-1.5 border border-gray-800 bg-black/60 hover:border-eb-yellow text-white rounded transition-colors"
+                  className="p-1.5 border border-eb-yellow/30 bg-black/60 hover:border-eb-yellow text-white rounded transition-colors"
                 >
                   <ChevronLeft className="w-5 h-5" />
                 </button>
-                <button 
+                <button
                   onClick={() => scrollRight(soloScrollRef)}
-                  className="p-1.5 border border-gray-800 bg-black/60 hover:border-eb-yellow text-white rounded transition-colors"
+                  className="p-1.5 border border-eb-yellow/30 bg-black/60 hover:border-eb-yellow text-white rounded transition-colors"
                 >
                   <ChevronRight className="w-5 h-5" />
                 </button>
@@ -249,7 +270,7 @@ export default function Home() {
               No active or upcoming Solo tournaments.
             </div>
           ) : (
-            <div 
+            <div
               ref={soloScrollRef}
               className="flex gap-6 overflow-x-auto scrollbar-none py-2 scroll-smooth"
               style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
@@ -257,14 +278,13 @@ export default function Home() {
               {soloTournaments.map((evt) => {
                 const isActive = evt.status === 'active';
                 return (
-                  <div 
-                    key={evt._id} 
+                  <div
+                    key={evt._id}
                     onClick={() => setDetailsModalEvent(evt)}
-                    className={`min-w-[320px] max-w-[320px] shrink-0 p-5 hover:scale-[1.02] transition-transform duration-300 cursor-pointer rounded-none relative border-2 before:content-none ${
-                      isActive 
-                        ? 'bg-eb-yellow text-black border-eb-yellow shadow-glow-yellow-sm' 
+                    className={`min-w-[320px] max-w-[320px] shrink-0 p-5 hover:scale-[1.02] transition-transform duration-300 cursor-pointer rounded-none relative border-2 before:content-none ${isActive
+                        ? 'bg-eb-yellow text-black border-eb-yellow shadow-glow-yellow-sm'
                         : 'pubg-hud-panel border-gray-800 bg-[#12120e]/40 text-gray-200'
-                    }`}
+                      }`}
                   >
                     {/* HUD Bracket Corners positioned relative to outer border-2 boundary */}
                     <div className={`absolute w-3 h-3 border-t-2 border-l-2 ${isActive ? 'border-black' : 'border-eb-yellow'}`} style={{ top: '-2px', left: '-2px' }}></div>
@@ -274,38 +294,32 @@ export default function Home() {
 
                     {/* Content wrapper with space-y-4 to protect brackets from sibling margin-top rules */}
                     <div className="space-y-4">
-                      <div className={`flex items-center justify-between border-b pb-2 ${
-                        isActive ? 'border-black/20' : 'border-gray-900'
-                      }`}>
-                        <span className={`px-2 py-0.5 text-[9px] font-black uppercase ${
-                          isActive ? 'bg-black text-eb-yellow' : 'bg-eb-yellow text-black'
+                      <div className={`flex items-center justify-between border-b pb-2 ${isActive ? 'border-black/20' : 'border-eb-yellow/15'
                         }`}>
+                        <span className={`px-2 py-0.5 text-[9px] font-black uppercase ${isActive ? 'bg-black text-eb-yellow' : 'bg-eb-yellow text-black'
+                          }`}>
                           {getStatusTag(evt.status)}
                         </span>
-                        <span className={`px-2 py-0.5 text-[8px] font-mono uppercase font-black ${
-                          isActive ? 'bg-black/10 text-black border border-black/20' : 'bg-eb-yellow/10 text-eb-yellow border border-eb-yellow/20'
-                        }`}>
+                        <span className={`px-2 py-0.5 text-[8px] font-mono uppercase font-black ${isActive ? 'bg-black/10 text-black border border-black/20' : 'bg-eb-yellow/10 text-eb-yellow border border-eb-yellow/20'
+                          }`}>
                           {evt.map || 'Erangel'}
                         </span>
                       </div>
 
                       <div>
                         <h4 className="text-lg font-extrabold uppercase truncate">{evt.title}</h4>
-                        <p className={`text-xs mt-1 font-semibold flex items-center gap-1 font-mono ${
-                          isActive ? 'text-neutral-900 font-bold' : 'text-gray-400'
-                        }`}>
+                        <p className={`text-xs mt-1 font-semibold flex items-center gap-1 font-mono ${isActive ? 'text-neutral-900 font-bold' : 'text-gray-400'
+                          }`}>
                           Solo Entry Fee: PKR {evt.soloEntryFee?.toLocaleString()}
                         </p>
-                        <p className={`text-[10px] font-semibold font-mono ${
-                          isActive ? 'text-neutral-800' : 'text-gray-500'
-                        }`}>
+                        <p className={`text-[10px] font-semibold font-mono ${isActive ? 'text-neutral-800' : 'text-gray-500'
+                          }`}>
                           Duration: {evt.numberOfDays || 1} {evt.numberOfDays === 1 ? 'Day' : 'Days'}
                         </p>
                       </div>
 
-                      <div className={`space-y-2 pt-2 text-[10px] font-mono border-t ${
-                        isActive ? 'border-black/20 text-neutral-800' : 'border-gray-900/60 text-gray-400'
-                      }`}>
+                      <div className={`space-y-2 pt-2 text-[10px] font-mono border-t ${isActive ? 'border-black/20 text-neutral-800' : 'border-eb-yellow/15 text-gray-400'
+                        }`}>
                         <div className="flex justify-between">
                           <span>Reg. Deadline:</span>
                           <span className="font-bold">{formatDateTime(evt.registrationDeadline)}</span>
@@ -318,11 +332,10 @@ export default function Home() {
                         </div>
                       </div>
 
-                      <div className={`text-center py-2 text-[10px] font-black uppercase tracking-widest border transition-all ${
-                        isActive 
-                          ? 'bg-black text-eb-yellow border-black hover:bg-neutral-900' 
+                      <div className={`text-center py-2 text-[10px] font-black uppercase tracking-widest border transition-all ${isActive
+                          ? 'bg-black text-eb-yellow border-black hover:bg-neutral-900'
                           : 'bg-eb-yellow/10 border-eb-yellow/30 text-eb-yellow hover:bg-eb-yellow hover:text-black'
-                      }`}>
+                        }`}>
                         View Details & Register
                       </div>
                     </div>
@@ -335,22 +348,22 @@ export default function Home() {
 
         {/* SQUAD TOURNAMENTS CAROUSEL */}
         <div className="space-y-4 relative">
-          <div className="flex justify-between items-center border-b border-gray-900 pb-3">
+          <div className="flex justify-between items-center border-b border-eb-yellow/30 pb-3">
             <h3 className="text-xl font-black text-white uppercase tracking-widest flex items-center gap-2">
               <Users className="w-6 h-6 text-eb-yellow" />
-              Squad Tournaments (Active/Upcoming)
+              squad tournaments
             </h3>
             {squadTournaments.length > 0 && (
               <div className="flex gap-2">
-                <button 
+                <button
                   onClick={() => scrollLeft(squadScrollRef)}
-                  className="p-1.5 border border-gray-800 bg-black/60 hover:border-eb-yellow text-white rounded transition-colors"
+                  className="p-1.5 border border-eb-yellow/30 bg-black/60 hover:border-eb-yellow text-white rounded transition-colors"
                 >
                   <ChevronLeft className="w-5 h-5" />
                 </button>
-                <button 
+                <button
                   onClick={() => scrollRight(squadScrollRef)}
-                  className="p-1.5 border border-gray-800 bg-black/60 hover:border-eb-yellow text-white rounded transition-colors"
+                  className="p-1.5 border border-eb-yellow/30 bg-black/60 hover:border-eb-yellow text-white rounded transition-colors"
                 >
                   <ChevronRight className="w-5 h-5" />
                 </button>
@@ -363,7 +376,7 @@ export default function Home() {
               No active or upcoming Squad tournaments.
             </div>
           ) : (
-            <div 
+            <div
               ref={squadScrollRef}
               className="flex gap-6 overflow-x-auto scrollbar-none py-2 scroll-smooth"
               style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
@@ -371,14 +384,13 @@ export default function Home() {
               {squadTournaments.map((evt) => {
                 const isActive = evt.status === 'active';
                 return (
-                  <div 
-                    key={evt._id} 
+                  <div
+                    key={evt._id}
                     onClick={() => setDetailsModalEvent(evt)}
-                    className={`min-w-[320px] max-w-[320px] shrink-0 p-5 hover:scale-[1.02] transition-transform duration-300 cursor-pointer rounded-none relative border-2 before:content-none ${
-                      isActive 
-                        ? 'bg-eb-yellow text-black border-eb-yellow shadow-glow-yellow-sm' 
+                    className={`min-w-[320px] max-w-[320px] shrink-0 p-5 hover:scale-[1.02] transition-transform duration-300 cursor-pointer rounded-none relative border-2 before:content-none ${isActive
+                        ? 'bg-eb-yellow text-black border-eb-yellow shadow-glow-yellow-sm'
                         : 'pubg-hud-panel border-gray-800 bg-[#12120e]/40 text-gray-200'
-                    }`}
+                      }`}
                   >
                     {/* HUD Bracket Corners positioned relative to outer border-2 boundary */}
                     <div className={`absolute w-3 h-3 border-t-2 border-l-2 ${isActive ? 'border-black' : 'border-eb-yellow'}`} style={{ top: '-2px', left: '-2px' }}></div>
@@ -388,38 +400,32 @@ export default function Home() {
 
                     {/* Content wrapper with space-y-4 to protect brackets from sibling margin-top rules */}
                     <div className="space-y-4">
-                      <div className={`flex items-center justify-between border-b pb-2 ${
-                        isActive ? 'border-black/20' : 'border-gray-900'
-                      }`}>
-                        <span className={`px-2 py-0.5 text-[9px] font-black uppercase ${
-                          isActive ? 'bg-black text-eb-yellow' : 'bg-eb-yellow text-black'
+                      <div className={`flex items-center justify-between border-b pb-2 ${isActive ? 'border-black/20' : 'border-eb-yellow/15'
                         }`}>
+                        <span className={`px-2 py-0.5 text-[9px] font-black uppercase ${isActive ? 'bg-black text-eb-yellow' : 'bg-eb-yellow text-black'
+                          }`}>
                           {getStatusTag(evt.status)}
                         </span>
-                        <span className={`px-2 py-0.5 text-[8px] font-mono uppercase font-black ${
-                          isActive ? 'bg-black/10 text-black border border-black/20' : 'bg-eb-yellow/10 text-eb-yellow border border-eb-yellow/20'
-                        }`}>
+                        <span className={`px-2 py-0.5 text-[8px] font-mono uppercase font-black ${isActive ? 'bg-black/10 text-black border border-black/20' : 'bg-eb-yellow/10 text-eb-yellow border border-eb-yellow/20'
+                          }`}>
                           {evt.map || 'Erangel'}
                         </span>
                       </div>
 
                       <div>
                         <h4 className="text-lg font-extrabold uppercase truncate">{evt.title}</h4>
-                        <p className={`text-xs mt-1 font-semibold flex items-center gap-1 font-mono ${
-                          isActive ? 'text-neutral-900 font-bold' : 'text-gray-400'
-                        }`}>
+                        <p className={`text-xs mt-1 font-semibold flex items-center gap-1 font-mono ${isActive ? 'text-neutral-900 font-bold' : 'text-gray-400'
+                          }`}>
                           Team Entry Fee: PKR {evt.teamEntryFee?.toLocaleString()}
                         </p>
-                        <p className={`text-[10px] font-semibold font-mono ${
-                          isActive ? 'text-neutral-800' : 'text-gray-500'
-                        }`}>
+                        <p className={`text-[10px] font-semibold font-mono ${isActive ? 'text-neutral-800' : 'text-gray-500'
+                          }`}>
                           Duration: {evt.numberOfDays || 1} {evt.numberOfDays === 1 ? 'Day' : 'Days'}
                         </p>
                       </div>
 
-                      <div className={`space-y-2 pt-2 text-[10px] font-mono border-t ${
-                        isActive ? 'border-black/20 text-neutral-800' : 'border-gray-900/60 text-gray-400'
-                      }`}>
+                      <div className={`space-y-2 pt-2 text-[10px] font-mono border-t ${isActive ? 'border-black/20 text-neutral-800' : 'border-eb-yellow/15 text-gray-400'
+                        }`}>
                         <div className="flex justify-between">
                           <span>Reg. Deadline:</span>
                           <span className="font-bold">{formatDateTime(evt.registrationDeadline)}</span>
@@ -432,11 +438,10 @@ export default function Home() {
                         </div>
                       </div>
 
-                      <div className={`text-center py-2 text-[10px] font-black uppercase tracking-widest border transition-all ${
-                        isActive 
-                          ? 'bg-black text-eb-yellow border-black hover:bg-neutral-900' 
+                      <div className={`text-center py-2 text-[10px] font-black uppercase tracking-widest border transition-all ${isActive
+                          ? 'bg-black text-eb-yellow border-black hover:bg-neutral-900'
                           : 'bg-eb-yellow/10 border-eb-yellow/30 text-eb-yellow hover:bg-eb-yellow hover:text-black'
-                      }`}>
+                        }`}>
                         View Details & Register
                       </div>
                     </div>
@@ -449,22 +454,22 @@ export default function Home() {
 
         {/* COMPLETED TOURNAMENTS CAROUSEL */}
         <div className="space-y-4 relative">
-          <div className="flex justify-between items-center border-b border-gray-900 pb-3">
+          <div className="flex justify-between items-center border-b border-eb-yellow/30 pb-3">
             <h3 className="text-xl font-black text-white uppercase tracking-widest flex items-center gap-2">
               <Trophy className="w-6 h-6 text-eb-yellow" />
-              Completed Tournaments (Status: Ended)
+              completed tournaments
             </h3>
             {completedTournaments.length > 0 && (
               <div className="flex gap-2">
-                <button 
+                <button
                   onClick={() => scrollLeft(completedScrollRef)}
-                  className="p-1.5 border border-gray-800 bg-black/60 hover:border-eb-yellow text-white rounded transition-colors"
+                  className="p-1.5 border border-eb-yellow/30 bg-black/60 hover:border-eb-yellow text-white rounded transition-colors"
                 >
                   <ChevronLeft className="w-5 h-5" />
                 </button>
-                <button 
+                <button
                   onClick={() => scrollRight(completedScrollRef)}
-                  className="p-1.5 border border-gray-800 bg-black/60 hover:border-eb-yellow text-white rounded transition-colors"
+                  className="p-1.5 border border-eb-yellow/30 bg-black/60 hover:border-eb-yellow text-white rounded transition-colors"
                 >
                   <ChevronRight className="w-5 h-5" />
                 </button>
@@ -477,14 +482,14 @@ export default function Home() {
               No completed tournaments available.
             </div>
           ) : (
-            <div 
+            <div
               ref={completedScrollRef}
               className="flex gap-6 overflow-x-auto scrollbar-none py-2 scroll-smooth"
               style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
             >
               {completedTournaments.map((evt) => (
-                <div 
-                  key={evt._id} 
+                <div
+                  key={evt._id}
                   onClick={() => handleOpenReport(evt._id)}
                   className="pubg-hud-panel p-5 space-y-4 min-w-[320px] max-w-[320px] shrink-0 border-2 border-gray-800 bg-[#12120e]/40 hover:scale-[1.02] transition-transform duration-300 cursor-pointer text-gray-250 before:content-none"
                 >
@@ -496,7 +501,7 @@ export default function Home() {
 
                   {/* Content wrapper with space-y-4 to protect brackets from sibling margin-top rules */}
                   <div className="space-y-4">
-                    <div className="flex items-center justify-between border-b border-gray-900 pb-2">
+                    <div className="flex items-center justify-between border-b border-eb-yellow/15 pb-2">
                       <span className="px-2 py-0.5 bg-gray-800 text-gray-400 text-[9px] font-black uppercase font-mono">
                         ENDED
                       </span>
@@ -512,7 +517,7 @@ export default function Home() {
                       </p>
                     </div>
 
-                    <div className="space-y-2 pt-2 text-[10px] font-mono border-t border-gray-900/60 text-gray-500">
+                    <div className="space-y-2 pt-2 text-[10px] font-mono border-t border-eb-yellow/15 text-gray-500">
                       <div className="flex justify-between">
                         <span>Played on:</span>
                         <span className="text-gray-400">{new Date(evt.matchStartTime).toLocaleDateString()}</span>
@@ -542,7 +547,7 @@ export default function Home() {
 
             {/* Content wrapper with space-y-6 to protect brackets from sibling margin-top rules */}
             <div className="space-y-6">
-              <div className="border-b border-gray-900 pb-3 flex justify-between items-center">
+              <div className="border-b border-eb-yellow/30 pb-3 flex justify-between items-center">
                 <h3 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2">
                   <Trophy className="w-5 h-5 text-eb-yellow" />
                   Official Tournament Report
@@ -562,9 +567,9 @@ export default function Home() {
                 </div>
               ) : reportData ? (
                 <div className="space-y-6">
-                  
+
                   {/* Event header info */}
-                  <div className="bg-[#12120e]/60 border border-gray-900 p-4 rounded text-xs space-y-1">
+                  <div className="bg-[#12120e]/60 border border-eb-yellow/30 p-4 rounded text-xs space-y-1">
                     <h4 className="text-base font-extrabold text-white uppercase tracking-wide">{reportData.event?.title}</h4>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-gray-400 font-medium font-mono pt-1">
                       <div>Format: <span className="text-white font-bold">{reportData.event?.type}</span></div>
@@ -594,7 +599,7 @@ export default function Home() {
                           )}
                         </div>
                       </div>
-                      
+
                       {/* Big background watermark icon */}
                       <Trophy className="w-24 h-24 text-eb-yellow opacity-10 absolute right-4 bottom-[-10px] pointer-events-none" />
                     </div>
@@ -607,12 +612,12 @@ export default function Home() {
                   {/* STANDINGS SCOREBOARD TABLE */}
                   <div className="space-y-2">
                     <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">Final Scoreboard Standings</span>
-                    
+
                     {reportData.registrations?.length > 0 ? (
-                      <div className="border border-gray-900 rounded overflow-hidden max-h-60 overflow-y-auto">
+                      <div className="border border-eb-yellow/30 rounded overflow-hidden max-h-60 overflow-y-auto">
                         <table className="w-full text-left text-xs border-collapse">
                           <thead>
-                            <tr className="bg-black text-gray-400 font-black uppercase tracking-wider border-b border-gray-900 text-[10px]">
+                            <tr className="bg-black text-gray-400 font-black uppercase tracking-wider border-b border-eb-yellow/30 text-[10px]">
                               <th className="p-3 w-16 text-center">Rank</th>
                               <th className="p-3">Squad / Player Members</th>
                               <th className="p-3 font-mono">Lead UID</th>
@@ -621,13 +626,12 @@ export default function Home() {
                           </thead>
                           <tbody className="divide-y divide-gray-950 text-gray-300 font-medium font-mono">
                             {reportData.registrations.map((reg) => (
-                              <tr 
-                                key={reg._id} 
-                                className={`transition-colors ${
-                                  reg.rank === 1 
-                                    ? 'bg-eb-yellow/5 text-eb-yellow font-bold' 
+                              <tr
+                                key={reg._id}
+                                className={`transition-colors ${reg.rank === 1
+                                    ? 'bg-eb-yellow/5 text-eb-yellow font-bold'
                                     : 'hover:bg-black/40'
-                                }`}
+                                  }`}
                               >
                                 <td className="p-3 text-center text-white font-extrabold">
                                   {reg.rank ? `#${reg.rank}` : 'N/A'}
@@ -676,7 +680,7 @@ export default function Home() {
 
             {/* Content wrapper with space-y-5 to protect brackets from sibling margin-top rules */}
             <div className="space-y-5">
-              <div className="border-b border-gray-900 pb-3 flex justify-between items-center">
+              <div className="border-b border-eb-yellow/30 pb-3 flex justify-between items-center">
                 <h3 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2">
                   <Swords className="w-5 h-5 text-eb-yellow" />
                   Tournament Details
@@ -697,18 +701,18 @@ export default function Home() {
                   <h4 className="text-2xl font-black text-white uppercase tracking-wide mt-2">{detailsModalEvent.title}</h4>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 bg-[#12120e]/60 border border-gray-900 p-4 rounded text-xs font-mono">
+                <div className="grid grid-cols-2 gap-4 bg-[#12120e]/60 border border-eb-yellow/30 p-4 rounded text-xs font-mono">
                   <div>Format: <span className="text-white font-bold">{detailsModalEvent.type || 'Squad'}</span></div>
                   <div>Map: <span className="text-white font-bold">{detailsModalEvent.map || 'Erangel'}</span></div>
                   <div>Solo Fee: <span className="text-white font-bold">PKR {detailsModalEvent.soloEntryFee?.toLocaleString()}</span></div>
                   <div>Team Fee: <span className="text-white font-bold">PKR {detailsModalEvent.teamEntryFee?.toLocaleString()}</span></div>
-                  <div className="col-span-2 border-t border-gray-900/60 pt-2">
+                  <div className="col-span-2 border-t border-eb-yellow/30 pt-2">
                     Duration: <span className="text-white font-bold">{detailsModalEvent.numberOfDays || 1} Day(s)</span>
                   </div>
                 </div>
 
                 <div className="space-y-2 text-xs font-mono text-gray-400">
-                  <div className="flex justify-between border-b border-gray-900 pb-1">
+                  <div className="flex justify-between border-b border-eb-yellow/30 pb-1">
                     <span>Registration Deadline:</span>
                     <span className="text-white">{formatDateTime(detailsModalEvent.registrationDeadline)}</span>
                   </div>
@@ -721,7 +725,7 @@ export default function Home() {
                 {detailsModalEvent.description && (
                   <div className="space-y-1">
                     <span className="text-gray-400 uppercase text-[9px] font-black tracking-wider block">Description & Rules:</span>
-                    <p className="text-gray-300 text-xs leading-relaxed whitespace-pre-line bg-[#12120e]/40 p-3 border border-gray-900 rounded font-medium font-sans">
+                    <p className="text-gray-300 text-xs leading-relaxed whitespace-pre-line bg-[#12120e]/40 p-3 border border-eb-yellow/30 rounded font-medium font-sans">
                       {detailsModalEvent.description}
                     </p>
                   </div>
@@ -751,9 +755,9 @@ export default function Home() {
         </div>
       )}
 
-      <RegisterModal 
-        isOpen={isRegisterOpen} 
-        onClose={() => { setIsRegisterOpen(false); setSelectedEventId(null); }} 
+      <RegisterModal
+        isOpen={isRegisterOpen}
+        onClose={() => { setIsRegisterOpen(false); setSelectedEventId(null); }}
         eventId={selectedEventId}
       />
     </div>

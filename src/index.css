@@ -35,17 +35,17 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #090907;
+  background: rgba(235, 176, 20, 0.05);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #1e1e17;
-  border: 1px solid #EBB014;
+  background: #090907;
+  border: 1px solid #FFF512;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #EBB014;
+  background: #FFF512;
 }
 
 /* Chrome, Safari, Edge, Opera number input styling reset */

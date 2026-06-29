@@ -10,10 +10,10 @@ export default function Footer() {
         {/* Brand & Mission */}
         <div className="space-y-3">
           <div className="flex items-center gap-2">
-            <span className="text-xl font-black italic tracking-wider text-eb-yellow">ESPORTS</span>
+            <span className="text-xl font-black italic tracking-wider text-eb-yellow uppercase">Epix esports</span>
           </div>
           <p className="text-gray-400 max-w-sm leading-relaxed">
-            The ultimate tournament arena for local PUBG Mobile and PC squads. Register, host custom matches, track transaction approvals, and dominate local leaderboards.
+            The ultimate tournament arena for local PUBG Mobile and PC squads.
           </p>
         </div>
 

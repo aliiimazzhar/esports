@@ -29,13 +29,10 @@ export default function Navbar() {
     <nav className="sticky top-0 z-50 bg-[#090907]/90 backdrop-blur-md border-b border-orig-yellow/20 px-4 py-3 md:px-8">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         
-        {/* Brand Logo */}
-        <Link to="/" className="flex items-center gap-2 group">
-          <div className="bg-eb-yellow p-1.5 rounded-tr-lg rounded-bl-lg transform skew-x-12 group-hover:scale-105 transition-all duration-300">
-            <Swords className="w-6 h-6 text-black -skew-x-12" />
-          </div>
-          <span className="text-2xl font-black italic tracking-widest text-eb-yellow">
-            ESPORTS
+        {/* Brand Title Epix esports */}
+        <Link to="/" className="flex items-center group">
+          <span className="text-2xl font-black italic tracking-widest text-eb-yellow uppercase">
+            Epix esports
           </span>
         </Link>
 
@@ -58,13 +55,13 @@ export default function Navbar() {
             <div className="flex items-center gap-4 border-l border-white/10 pl-6">
               <div className="flex items-center gap-2 px-3 py-1.5 bg-eb-yellow/10 border border-eb-yellow/30 rounded-sm">
                 <User className="w-3.5 h-3.5 text-eb-yellow" />
-                <span className="text-xs font-mono font-bold text-white uppercase tracking-wider">
+                <span className="text-xs font-mono font-bold text-white tracking-wider">
                   {user.uid}
                 </span>
               </div>
               <button
                 onClick={logoutUser}
-                className="flex items-center gap-1 text-xs uppercase tracking-wider font-bold text-gray-405 hover:text-tan transition-colors"
+                className="flex items-center gap-1 text-xs uppercase tracking-wider font-bold text-gray-400 hover:text-tan transition-colors"
                 title="Sign Out"
               >
                 <LogOut className="w-4 h-4" />
@@ -94,7 +91,7 @@ export default function Navbar() {
         <div className="flex items-center md:hidden">
           <button 
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="p-1 text-gray-400 hover:text-white"
+            className="p-1 text-black"
           >
             {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
@@ -104,7 +101,7 @@ export default function Navbar() {
 
       {/* Mobile Menu Panel */}
       {mobileMenuOpen && (
-        <div className="md:hidden mt-3 bg-black border border-orig-yellow/20 rounded-lg p-4 space-y-4 animate-fadeIn">
+        <div className="md:hidden mt-3 bg-black border border-eb-yellow/30 rounded-lg p-4 space-y-4 animate-fadeIn">
           <div className="flex flex-col gap-3">
             {navLinks.map((link) => {
               const Icon = link.icon;
@@ -116,7 +113,7 @@ export default function Navbar() {
                   className={`flex items-center gap-3 px-4 py-2.5 rounded-md text-sm font-bold transition-all ${
                     isActive(link.path) 
                       ? 'text-black bg-eb-yellow' 
-                      : 'text-gray-400 hover:text-white hover:bg-card-bg/30'
+                      : 'text-gray-400 hover:text-white hover:bg-white/5'
                   }`}
                 >
                   <Icon className="w-5 h-5" />
