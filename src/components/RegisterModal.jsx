@@ -2,7 +2,7 @@ import React, { useContext, useState, useEffect } from 'react';
 import { AppContext } from '../context/AppContext';
 import { Upload, FileImage, CheckCircle, Plus, Trash2, Info, AlertTriangle, Lock } from 'lucide-react';
 
-export default function RegisterModal({ isOpen, onClose }) {
+export default function RegisterModal({ isOpen, onClose, eventId }) {
   const { activeEvent, submitRegistration, user } = useContext(AppContext);
 
   // Tab: 'solo' | 'team'
@@ -186,6 +186,10 @@ export default function RegisterModal({ isOpen, onClose }) {
     formData.append('whatsappNumber', whatsappNumber.trim());
     formData.append('transactionId', transactionId.trim());
     formData.append('paymentScreenshot', screenshotFile);
+    // FIX 8: Pass eventId so the server registers to the correct tournament
+    if (eventId) {
+      formData.append('eventId', eventId);
+    }
 
     try {
       const res = await submitRegistration(formData);

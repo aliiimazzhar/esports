@@ -1,7 +1,7 @@
 import React, { useContext, useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppContext } from '../context/AppContext';
-import { ShieldCheck, Lock, Award, Key, ClipboardCheck, Eye, Check, X, ListOrdered, FileImage, LogOut, ArrowRight, Clipboard, Trash2, Edit } from 'lucide-react';
+import { ShieldCheck, Lock, Award, Key, ClipboardCheck, Eye, Check, X, ListOrdered, FileImage, LogOut, ArrowRight, Clipboard, Trash2, Edit, Users } from 'lucide-react';
 
 export default function AdminDashboardInternal() {
   const { 
@@ -19,6 +19,13 @@ export default function AdminDashboardInternal() {
     fetchApprovedRegistrations,
     auditRegistrationStatus,
     fetchMatchProofs,
+    fetchSignedUpUsers,
+    deleteSignedUpUser,
+    fetchCustomLeaderboard,
+    addCustomLeaderboardEntry,
+    updateCustomLeaderboardEntry,
+    deleteCustomLeaderboardEntry,
+    clearCustomLeaderboard,
     getAdminHeaders
   } = useContext(AppContext);
 
@@ -70,6 +77,21 @@ export default function AdminDashboardInternal() {
   const [leaderSuccess, setLeaderSuccess] = useState('');
   const [localResults, setLocalResults] = useState({});
 
+  // Signed up users states
+  const [signedUpUsers, setSignedUpUsers] = useState([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+
+  // Custom Leaderboard states
+  const [customStandings, setCustomStandings] = useState([]);
+  const [loadingCustom, setLoadingCustom] = useState(false);
+  const [leaderboardMode, setLeaderboardMode] = useState('custom');
+  const [customRank, setCustomRank] = useState('');
+  const [customName, setCustomName] = useState('');
+  const [customDetails, setCustomDetails] = useState('');
+  const [customKills, setCustomKills] = useState('');
+  const [customPoints, setCustomPoints] = useState('');
+  const [editingCustomId, setEditingCustomId] = useState(null);
+
   // Local helper to format Date into datetime-local input string
   const toDatetimeLocal = (isoStr) => {
     if (!isoStr) return '';
@@ -84,10 +106,12 @@ export default function AdminDashboardInternal() {
       setRoomId(activeEvent.roomId || '');
       setRoomPassword(activeEvent.roomPassword || '');
       setLeaderHtml(activeEvent.leaderboardHtml || '');
+      setLeaderboardMode('active');
     } else {
       setRoomId('');
       setRoomPassword('');
       setLeaderHtml('');
+      setLeaderboardMode('custom');
     }
   }, [activeEvent]);
 
@@ -139,6 +163,38 @@ export default function AdminDashboardInternal() {
     }
   }, [adminPasscode, fetchMatchProofs]);
 
+  // Load signed-up users list
+  const loadSignedUpUsers = useCallback(async () => {
+    if (!adminPasscode) return;
+    setLoadingUsers(true);
+    try {
+      const res = await fetchSignedUpUsers();
+      if (res.ok) {
+        setSignedUpUsers(res.data);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingUsers(false);
+    }
+  }, [adminPasscode, fetchSignedUpUsers]);
+
+  // Load custom leaderboard list
+  const loadCustomLeaderboard = useCallback(async () => {
+    if (!adminPasscode) return;
+    setLoadingCustom(true);
+    try {
+      const res = await fetchCustomLeaderboard();
+      if (res.ok) {
+        setCustomStandings(res.data);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingCustom(false);
+    }
+  }, [adminPasscode, fetchCustomLeaderboard]);
+
   // Fetch lists based on tab
   useEffect(() => {
     if (adminPasscode) {
@@ -150,11 +206,14 @@ export default function AdminDashboardInternal() {
         } else if (subTabRegistrations === 'proofs') {
           loadMatchProofs();
         }
+      } else if (activeTab === 'users') {
+        loadSignedUpUsers();
       } else if (activeTab === 'leaderboard') {
         loadApprovedRegistrations();
+        loadCustomLeaderboard();
       }
     }
-  }, [activeTab, subTabRegistrations, adminPasscode, loadPendingRegistrations, loadApprovedRegistrations, loadMatchProofs]);
+  }, [activeTab, subTabRegistrations, adminPasscode, loadPendingRegistrations, loadApprovedRegistrations, loadMatchProofs, loadSignedUpUsers, loadCustomLeaderboard]);
 
   // Initialize localResults when approvedRegs changes
   useEffect(() => {
@@ -243,6 +302,94 @@ export default function AdminDashboardInternal() {
       }
     } catch (err) {
       alert('Connection error.');
+    }
+  };
+
+  const handleDeleteUser = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this user account?')) return;
+    try {
+      const res = await deleteSignedUpUser(id);
+      if (res.ok) {
+        alert('User account deleted successfully.');
+        loadSignedUpUsers();
+      } else {
+        alert(res.error || 'Failed to delete user account.');
+      }
+    } catch (err) {
+      alert('Connection error.');
+    }
+  };
+
+  const handleCustomSubmit = async (e) => {
+    e.preventDefault();
+    if (!customRank || !customName) {
+      alert('Rank and Name/Squad are required.');
+      return;
+    }
+    const payload = {
+      rank: Number(customRank),
+      name: customName,
+      details: customDetails,
+      kills: Number(customKills || 0),
+      points: Number(customPoints || 0)
+    };
+    try {
+      let res;
+      if (editingCustomId) {
+        res = await updateCustomLeaderboardEntry(editingCustomId, payload);
+      } else {
+        res = await addCustomLeaderboardEntry(payload);
+      }
+      if (res.ok) {
+        setCustomRank('');
+        setCustomName('');
+        setCustomDetails('');
+        setCustomKills('');
+        setCustomPoints('');
+        setEditingCustomId(null);
+        loadCustomLeaderboard();
+      } else {
+        alert(res.error || 'Failed to save entry.');
+      }
+    } catch (err) {
+      alert('Communication error.');
+    }
+  };
+
+  const handleEditCustomClick = (entry) => {
+    setEditingCustomId(entry._id);
+    setCustomRank(entry.rank);
+    setCustomName(entry.name);
+    setCustomDetails(entry.details);
+    setCustomKills(entry.kills);
+    setCustomPoints(entry.points);
+  };
+
+  const handleDeleteCustom = async (id) => {
+    if (!window.confirm('Delete this entry?')) return;
+    try {
+      const res = await deleteCustomLeaderboardEntry(id);
+      if (res.ok) {
+        loadCustomLeaderboard();
+      } else {
+        alert(res.error || 'Failed to delete entry.');
+      }
+    } catch (err) {
+      alert('Communication error.');
+    }
+  };
+
+  const handleClearCustom = async () => {
+    if (!window.confirm('Clear all entries from the custom leaderboard?')) return;
+    try {
+      const res = await clearCustomLeaderboard();
+      if (res.ok) {
+        loadCustomLeaderboard();
+      } else {
+        alert(res.error || 'Failed to clear leaderboard.');
+      }
+    } catch (err) {
+      alert('Communication error.');
     }
   };
 
@@ -435,7 +582,7 @@ export default function AdminDashboardInternal() {
         </div>
 
         {/* Tab Selection */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 bg-[#12120e] p-1 border border-white/5">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2 bg-[#12120e] p-1 border border-white/5">
           <button
             onClick={() => setActiveTab('registrations')}
             className={`flex items-center justify-center gap-2 py-3 font-black text-[10px] uppercase tracking-wider transition-all duration-250 ${
@@ -445,7 +592,19 @@ export default function AdminDashboardInternal() {
             }`}
           >
             <ClipboardCheck className="w-4 h-4" />
-            Registrations
+            Registered Users
+          </button>
+
+          <button
+            onClick={() => setActiveTab('users')}
+            className={`flex items-center justify-center gap-2 py-3 font-black text-[10px] uppercase tracking-wider transition-all duration-250 ${
+              activeTab === 'users'
+                ? 'bg-eb-yellow text-black'
+                : 'text-gray-400 hover:text-white hover:bg-black/20'
+            }`}
+          >
+            <Users className="w-4 h-4" />
+            Signed In Users
           </button>
           
           <button
@@ -811,6 +970,64 @@ export default function AdminDashboardInternal() {
             </div>
           )}
 
+          {/* TAB: SIGNED IN USERS */}
+          {activeTab === 'users' && (
+            <div className="space-y-6 animate-fadeIn">
+              <div className="border-b border-gray-900 pb-4">
+                <h3 className="text-sm font-black text-white uppercase tracking-widest">
+                  Signed In Users List
+                </h3>
+                <p className="text-gray-500 text-[10px] font-semibold mt-0.5">
+                  Accounts registered in the database. Players must sign up here first to register for tournaments.
+                </p>
+              </div>
+
+              {loadingUsers ? (
+                <div className="text-center py-16 bg-[#12120e] border border-white/5 rounded">
+                  <p className="text-gray-500 text-xs font-semibold animate-pulse">Syncing user database...</p>
+                </div>
+              ) : signedUpUsers.length > 0 ? (
+                <div className="pubg-hud-panel overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead>
+                        <tr className="bg-black text-gray-400 font-black uppercase tracking-wider border-b border-gray-900 text-[10px]">
+                          <th className="p-4">Character UID</th>
+                          <th className="p-4">Phone Number</th>
+                          <th className="p-4">Account Created At</th>
+                          <th className="p-4 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-950 text-gray-300">
+                        {signedUpUsers.map((usr) => (
+                          <tr key={usr._id} className="hover:bg-black/40 transition-colors">
+                            <td className="p-4 font-mono font-bold text-white uppercase">{usr.uid}</td>
+                            <td className="p-4 font-mono text-gray-400">{usr.phoneNumber}</td>
+                            <td className="p-4 font-mono text-gray-400">
+                              {new Date(usr.createdAt).toLocaleString()}
+                            </td>
+                            <td className="p-4 text-right">
+                              <button
+                                onClick={() => handleDeleteUser(usr._id)}
+                                className="p-1 px-2.5 bg-tan hover:bg-[#7e3400] text-white font-black uppercase text-[9px] tracking-wider rounded transition-colors"
+                              >
+                                Delete Account
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-16 bg-[#12120e] border border-white/5 rounded">
+                  <p className="text-gray-500 text-xs font-semibold">No user accounts found in database.</p>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* TAB 2: TOURNAMENTS */}
           {activeTab === 'tournaments' && (
             <div className="space-y-6">
@@ -1041,6 +1258,7 @@ export default function AdminDashboardInternal() {
                             <option value="active">Active (Registration Open)</option>
                             <option value="upcoming">Upcoming (More Events List)</option>
                             <option value="live">Live (Currently Played)</option>
+                            <option value="ended">Ended (Completed)</option>
                           </select>
                         </div>
                       </div>
@@ -1151,11 +1369,33 @@ export default function AdminDashboardInternal() {
                 </div>
               </div>
 
-              {!activeEvent ? (
-                <div className="text-center py-12 bg-black/40 border border-gray-900 rounded text-gray-550 text-xs">
-                  No active tournament configured. Ranks can only be assigned to approved rosters in active matches.
+              {activeEvent && (
+                <div className="flex gap-4 border-b border-gray-950 pb-2 mb-2 overflow-x-auto whitespace-nowrap">
+                  <button
+                    onClick={() => setLeaderboardMode('active')}
+                    className={`pb-1 text-xs font-black uppercase tracking-wider transition-colors ${
+                      leaderboardMode === 'active'
+                        ? 'text-eb-yellow border-b-2 border-eb-yellow'
+                        : 'text-gray-500 hover:text-gray-300'
+                    }`}
+                  >
+                    Active Tournament Standings
+                  </button>
+                  <button
+                    onClick={() => setLeaderboardMode('custom')}
+                    className={`pb-1 text-xs font-black uppercase tracking-wider transition-colors ${
+                      leaderboardMode === 'custom'
+                        ? 'text-eb-yellow border-b-2 border-eb-yellow'
+                        : 'text-gray-500 hover:text-gray-300'
+                    }`}
+                  >
+                    Custom Standings List (Independent)
+                  </button>
                 </div>
-              ) : approvedRegs.length > 0 ? (
+              )}
+
+              {leaderboardMode === 'active' && activeEvent ? (
+                approvedRegs.length > 0 ? (
                 <div className="overflow-x-auto border border-gray-900 rounded bg-black/40">
                   <table className="w-full text-left text-xs border-collapse">
                     <thead>
@@ -1269,9 +1509,155 @@ export default function AdminDashboardInternal() {
                     </tbody>
                   </table>
                 </div>
+                ) : (
+                  <div className="text-center py-16 bg-[#12120e] border border-white/5 rounded text-gray-550 text-xs">
+                    No approved registrations found in active tournament to rank.
+                  </div>
+                )
               ) : (
-                <div className="text-center py-16 bg-[#12120e] border border-white/5 rounded text-gray-500 text-xs">
-                  No approved registrations found in active tournament to rank.
+                <div className="space-y-4 text-xs font-medium">
+                  {/* Custom Leaderboard Form */}
+                  <form onSubmit={handleCustomSubmit} className="bg-black/60 p-4 border border-gray-950 rounded grid grid-cols-1 sm:grid-cols-6 gap-3 items-end">
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest block">Rank</label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={customRank}
+                        onChange={(e) => setCustomRank(e.target.value)}
+                        placeholder="e.g. 1"
+                        className="pubg-input w-full text-xs font-mono"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-1 sm:col-span-2">
+                      <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest block">Name / Squad</label>
+                      <input
+                        type="text"
+                        value={customName}
+                        onChange={(e) => setCustomName(e.target.value)}
+                        placeholder="e.g. Team Alpha"
+                        className="pubg-input w-full text-xs"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest block">Details (UIDs)</label>
+                      <input
+                        type="text"
+                        value={customDetails}
+                        onChange={(e) => setCustomDetails(e.target.value)}
+                        placeholder="e.g. 5123456"
+                        className="pubg-input w-full text-xs"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest block">Points</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={customPoints}
+                        onChange={(e) => setCustomPoints(e.target.value)}
+                        placeholder="0"
+                        className="pubg-input w-full text-xs font-mono"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest block">Kills</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={customKills}
+                        onChange={(e) => setCustomKills(e.target.value)}
+                        placeholder="0"
+                        className="pubg-input w-full text-xs font-mono"
+                      />
+                    </div>
+                    <div className="sm:col-span-6 flex justify-end gap-2 pt-2">
+                      {editingCustomId && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingCustomId(null);
+                            setCustomRank('');
+                            setCustomName('');
+                            setCustomDetails('');
+                            setCustomKills('');
+                            setCustomPoints('');
+                          }}
+                          className="py-1.5 px-4 bg-black border border-gray-800 hover:border-tan text-white font-black uppercase text-[9px] tracking-wider rounded"
+                        >
+                          Cancel
+                        </button>
+                      )}
+                      <button
+                        type="submit"
+                        className="py-1.5 px-6 bg-eb-yellow text-black font-black uppercase text-[9px] tracking-wider rounded"
+                      >
+                        {editingCustomId ? 'Update Entry' : 'Add Entry'}
+                      </button>
+                      {customStandings.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={handleClearCustom}
+                          className="py-1.5 px-4 bg-tan hover:bg-[#7e3400] text-white font-black uppercase text-[9px] tracking-wider rounded ml-auto animate-fadeIn"
+                        >
+                          Clear All Standings
+                        </button>
+                      )}
+                    </div>
+                  </form>
+
+                  {/* Custom Leaderboard Table */}
+                  {loadingCustom ? (
+                    <div className="text-center py-12 bg-black/40 border border-gray-900 rounded text-gray-550 text-xs font-semibold animate-pulse">
+                      Loading custom standings...
+                    </div>
+                  ) : customStandings.length > 0 ? (
+                    <div className="overflow-x-auto border border-gray-900 rounded bg-black/40">
+                      <table className="w-full text-left text-xs border-collapse">
+                        <thead>
+                          <tr className="bg-black text-gray-400 font-black uppercase tracking-wider border-b border-gray-900 text-[10px]">
+                            <th className="p-4 text-center w-16">Rank</th>
+                            <th className="p-4">Name / Squad</th>
+                            <th className="p-4">Details</th>
+                            <th className="p-4 text-center w-24">Points</th>
+                            <th className="p-4 text-center w-24">Kills</th>
+                            <th className="p-4 text-right w-36">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-950 text-gray-300">
+                          {customStandings.map((entry) => (
+                            <tr key={entry._id} className="hover:bg-black/40 transition-colors">
+                              <td className="p-4 text-center font-mono font-bold text-white">{entry.rank}</td>
+                              <td className="p-4 font-bold text-white uppercase">{entry.name}</td>
+                              <td className="p-4 font-mono text-gray-550 text-[11px]">{entry.details || 'N/A'}</td>
+                              <td className="p-4 text-center font-mono">{entry.points}</td>
+                              <td className="p-4 text-center font-mono">{entry.kills}</td>
+                              <td className="p-4 text-right space-x-2">
+                                <button
+                                  onClick={() => handleEditCustomClick(entry)}
+                                  className="px-2.5 py-1 bg-eb-yellow hover:scale-[1.03] text-black font-black uppercase text-[9px] tracking-wider rounded transition-all duration-200"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteCustom(entry._id)}
+                                  className="px-2.5 py-1 bg-tan hover:bg-[#7e3400] text-white font-black uppercase text-[9px] tracking-wider rounded transition-all duration-200"
+                                >
+                                  Delete
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="text-center py-16 bg-[#12120e] border border-white/5 rounded text-gray-550 text-xs">
+                      No custom global standings configured. Add entries using the form above.
+                    </div>
+                  )}
                 </div>
               )}
             </div>

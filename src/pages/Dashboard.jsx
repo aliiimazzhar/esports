@@ -108,7 +108,8 @@ export default function Dashboard() {
     setProofSuccess('');
 
     const formData = new FormData();
-    formData.append('uid', user.uid);
+    // FIX 9: Send registrationId directly — server verifies ownership via JWT
+    formData.append('registrationId', registration._id);
     formData.append('matchProofScreenshot', proofFile);
 
     try {
@@ -120,7 +121,7 @@ export default function Dashboard() {
         // Reload registrations to show updated state
         await loadUserRegistrations();
       } else {
-        setProofError(res.data.error || 'Failed to upload scoreboard proof.');
+        setProofError(res.data?.error || 'Failed to upload scoreboard proof.');
       }
     } catch (err) {
       setProofError('Connection error. Please try again.');
@@ -128,6 +129,7 @@ export default function Dashboard() {
       setProofLoading(false);
     }
   };
+
 
   // Format date helper
   const formatDateTime = (dateStr) => {

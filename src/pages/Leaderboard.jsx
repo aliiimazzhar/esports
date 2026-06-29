@@ -6,10 +6,23 @@ export default function Leaderboard() {
   const { activeEvent, loadingActiveEvent } = useContext(AppContext);
   const [standings, setStandings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isCustom, setIsCustom] = useState(false);
 
   useEffect(() => {
     const fetchStandings = async () => {
       try {
+        const customRes = await fetch('/api/leaderboard');
+        if (customRes.ok) {
+          const customData = await customRes.json();
+          if (customData && customData.length > 0) {
+            setStandings(customData);
+            setIsCustom(true);
+            setLoading(false);
+            return;
+          }
+        }
+
+        setIsCustom(false);
         const response = await fetch('/api/events/active/leaderboard');
         if (response.ok) {
           const data = await response.json();
@@ -56,11 +69,16 @@ export default function Leaderboard() {
           <div className="flex items-center justify-between border-b border-gray-900 pb-3">
             <span className="text-xs font-black text-white uppercase tracking-widest flex items-center gap-1.5">
               <ListOrdered className="w-4 h-4 text-eb-yellow" />
-              {activeEvent ? activeEvent.title : 'Active Standings'}
+              {isCustom ? 'Global Standings' : (activeEvent ? activeEvent.title : 'Active Standings')}
             </span>
-            {activeEvent && (
+            {activeEvent && !isCustom && (
               <span className="px-2.5 py-0.5 rounded-sm bg-black border border-gray-800 text-gold text-[9px] font-black uppercase tracking-wider font-mono">
                 {activeEvent.type || 'Squad'} format
+              </span>
+            )}
+            {isCustom && (
+              <span className="px-2.5 py-0.5 rounded-sm bg-black border border-gray-800 text-gold text-[9px] font-black uppercase tracking-wider font-mono">
+                Global Format
               </span>
             )}
           </div>
@@ -72,12 +90,12 @@ export default function Leaderboard() {
                   <tr className="bg-black text-gray-400 font-black uppercase tracking-wider border-b border-gray-900 text-[10px]">
                     <th className="p-4 text-center w-16">Rank</th>
                     <th className="p-4">Roster / Players</th>
-                    <th className="p-4 font-mono text-right w-32">{activeEvent.type === 'Squad' ? 'Total Kills' : 'Total Points'}</th>
+                    <th className="p-4 font-mono text-right w-32">{isCustom ? 'Score Details' : (activeEvent?.type === 'Squad' ? 'Total Kills' : 'Total Points')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-950 text-gray-300">
                   {standings.slice(0, 100).map((row, idx) => {
-                    const isSquad = activeEvent.type === 'Squad';
+                    const isSquad = activeEvent?.type === 'Squad';
                     const displayRank = row.rank || idx + 1;
                     return (
                       <tr key={row._id} className="hover:bg-white/[0.01] transition-colors">
@@ -95,7 +113,14 @@ export default function Leaderboard() {
                           </span>
                         </td>
                         <td className="p-4">
-                          {isSquad ? (
+                          {isCustom ? (
+                            <div>
+                              <span className="font-bold text-white uppercase tracking-wide">{row.name}</span>
+                              {row.details && (
+                                <p className="text-[10px] text-gray-500 font-mono mt-0.5">{row.details}</p>
+                              )}
+                            </div>
+                          ) : isSquad ? (
                             <div className="space-y-1">
                               <span className="font-bold text-white uppercase tracking-wide block">
                                 Squad Leader: {row.allInGameNames?.[0] || 'Unknown'} ({row.trackingUid})
@@ -118,9 +143,12 @@ export default function Leaderboard() {
                           )}
                         </td>
                         <td className="p-4 text-right font-mono font-bold text-eb-yellow text-sm">
-                          {isSquad 
-                            ? `${(row.playerKills || []).reduce((sum, k) => sum + (k || 0), 0)} kills` 
-                            : `${row.points || 0} pts`
+                          {isCustom 
+                            ? `${row.points || 0} pts / ${row.kills || 0} kills`
+                            : (isSquad 
+                              ? `${(row.playerKills || []).reduce((sum, k) => sum + (k || 0), 0)} kills` 
+                              : `${row.points || 0} pts`
+                            )
                           }
                         </td>
                       </tr>

@@ -58,6 +58,13 @@ export const AppContextProvider = ({ children }) => {
     };
   };
 
+  // Helper for authenticated user headers (JWT Bearer token)
+  const getAuthHeaders = () => {
+    return {
+      'Authorization': token ? `Bearer ${token}` : ''
+    };
+  };
+
   /* ==========================================================================
      PLAYER & PUBLIC ACTIONS
      ========================================================================== */
@@ -86,12 +93,13 @@ export const AppContextProvider = ({ children }) => {
     }
   };
 
-  // Submit new registration (FormData includes receipt file + other text fields)
+  // Submit new registration (FormData includes receipt file + other text fields + optional eventId)
   const submitRegistration = async (formData) => {
     try {
       const response = await fetch('/api/registrations', {
         method: 'POST',
         body: formData
+        // Note: do NOT set Content-Type header here; browser sets it with multipart boundary
       });
       const data = await response.json();
       return { ok: response.ok, status: response.status, data };
@@ -101,11 +109,13 @@ export const AppContextProvider = ({ children }) => {
     }
   };
 
-  // Upload post-match scoreboard proof (FormData includes scoreboard file + uid)
+  // Upload post-match scoreboard proof (FormData includes scoreboard file + registrationId)
+  // Requires JWT auth token in Authorization header
   const submitMatchProof = async (formData) => {
     try {
       const response = await fetch('/api/registrations/submit-proof', {
         method: 'POST',
+        headers: getAuthHeaders(), // JWT Bearer token
         body: formData
       });
       const data = await response.json();
@@ -315,6 +325,145 @@ export const AppContextProvider = ({ children }) => {
     }
   };
 
+  // Retrieve all signed-up/signed-in users
+  const fetchSignedUpUsers = async () => {
+    try {
+      const response = await fetch('/api/admin/users', {
+        headers: getAdminHeaders()
+      });
+      const data = await response.json();
+      if (response.ok) {
+        return { ok: true, data };
+      }
+      return { ok: false, error: data.error || 'Failed to retrieve signed-up users.' };
+    } catch (err) {
+      console.error('Error fetching signed-up users:', err);
+      return { ok: false, error: 'Network communication error.' };
+    }
+  };
+
+  // Delete user account (admin)
+  const deleteSignedUpUser = async (id) => {
+    try {
+      const response = await fetch(`/api/admin/users/${id}`, {
+        method: 'DELETE',
+        headers: getAdminHeaders()
+      });
+      const data = await response.json();
+      if (response.ok) {
+        return { ok: true, data };
+      }
+      return { ok: false, error: data.error || 'Failed to delete user account.' };
+    } catch (err) {
+      console.error('Error deleting user account:', err);
+      return { ok: false, error: 'Network communication error.' };
+    }
+  };
+
+  // Fetch tournament report by ID
+  const fetchTournamentReport = async (id) => {
+    try {
+      const response = await fetch(`/api/events/${encodeURIComponent(id)}/report`);
+      const data = await response.json();
+      if (response.ok) {
+        return { ok: true, data };
+      }
+      return { ok: false, error: data.error || 'Failed to fetch tournament report.' };
+    } catch (err) {
+      console.error('Error fetching tournament report:', err);
+      return { ok: false, error: 'Network communication error.' };
+    }
+  };
+
+  // Fetch custom leaderboard entries
+  const fetchCustomLeaderboard = async () => {
+    try {
+      const response = await fetch('/api/leaderboard');
+      const data = await response.json();
+      if (response.ok) {
+        return { ok: true, data };
+      }
+      return { ok: false, error: data.error || 'Failed to fetch custom leaderboard.' };
+    } catch (err) {
+      console.error('Error fetching custom leaderboard:', err);
+      return { ok: false, error: 'Network communication error.' };
+    }
+  };
+
+  // Add custom leaderboard entry (admin)
+  const addCustomLeaderboardEntry = async (entryData) => {
+    try {
+      const response = await fetch('/api/admin/leaderboard', {
+        method: 'POST',
+        headers: getAdminHeaders(),
+        body: JSON.stringify(entryData)
+      });
+      const data = await response.json();
+      if (response.ok) {
+        return { ok: true, data };
+      }
+      return { ok: false, error: data.error || 'Failed to add leaderboard entry.' };
+    } catch (err) {
+      console.error('Error adding leaderboard entry:', err);
+      return { ok: false, error: 'Network communication error.' };
+    }
+  };
+
+  // Update custom leaderboard entry (admin)
+  const updateCustomLeaderboardEntry = async (id, entryData) => {
+    try {
+      const response = await fetch(`/api/admin/leaderboard/${id}`, {
+        method: 'PUT',
+        headers: getAdminHeaders(),
+        body: JSON.stringify(entryData)
+      });
+      const data = await response.json();
+      if (response.ok) {
+        return { ok: true, data };
+      }
+      return { ok: false, error: data.error || 'Failed to update leaderboard entry.' };
+    } catch (err) {
+      console.error('Error updating leaderboard entry:', err);
+      return { ok: false, error: 'Network communication error.' };
+    }
+  };
+
+  // Delete custom leaderboard entry (admin)
+  const deleteCustomLeaderboardEntry = async (id) => {
+    try {
+      const response = await fetch(`/api/admin/leaderboard/${id}`, {
+        method: 'DELETE',
+        headers: getAdminHeaders()
+      });
+      const data = await response.json();
+      if (response.ok) {
+        return { ok: true, data };
+      }
+      return { ok: false, error: data.error || 'Failed to delete leaderboard entry.' };
+    } catch (err) {
+      console.error('Error deleting leaderboard entry:', err);
+      return { ok: false, error: 'Network communication error.' };
+    }
+  };
+
+  // Clear all custom leaderboard entries (admin)
+  const clearCustomLeaderboard = async () => {
+    try {
+      const response = await fetch('/api/admin/leaderboard', {
+        method: 'DELETE',
+        headers: getAdminHeaders()
+      });
+      const data = await response.json();
+      if (response.ok) {
+        return { ok: true, data };
+      }
+      return { ok: false, error: data.error || 'Failed to clear leaderboard entries.' };
+    } catch (err) {
+      console.error('Error clearing leaderboard:', err);
+      return { ok: false, error: 'Network communication error.' };
+    }
+  };
+
   // Sign Up User
   const signUp = async (uid, phoneNumber, password, recoveryPassword) => {
     try {
@@ -400,12 +549,21 @@ export const AppContextProvider = ({ children }) => {
       fetchApprovedRegistrations,
       auditRegistrationStatus,
       fetchMatchProofs,
+      fetchSignedUpUsers,
+      deleteSignedUpUser,
+      fetchCustomLeaderboard,
+      fetchTournamentReport,
+      addCustomLeaderboardEntry,
+      updateCustomLeaderboardEntry,
+      deleteCustomLeaderboardEntry,
+      clearCustomLeaderboard,
       signUp,
       signIn,
       logoutUser,
       recoverUserPassword,
       fetchUserRegistrations,
-      getAdminHeaders
+      getAdminHeaders,
+      getAuthHeaders
     }}>
       {children}
     </AppContext.Provider>

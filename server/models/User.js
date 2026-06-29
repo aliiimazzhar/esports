@@ -7,6 +7,7 @@ const userSchema = new mongoose.Schema({
   salt: { type: String, required: true },
   recoveryPasswordHash: { type: String, required: true },
   recoverySalt: { type: String, required: true },
+  hashVersion: { type: Number, default: 0 }, // 0 = legacy 1k PBKDF2, 1 = 600k PBKDF2
   createdAt: { type: Date, default: Date.now }
 });
 
