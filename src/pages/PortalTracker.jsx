@@ -174,7 +174,7 @@ export default function PortalTracker() {
             <div className={`p-4 border flex items-center justify-between transition-all ${
               paymentStatus === 'Pending' 
                 ? 'border-eb-yellow bg-eb-yellow/[0.02] text-eb-yellow shadow-glow-yellow-sm' 
-                : 'border-gray-900 bg-black/60 text-gray-500'
+                : 'border-eb-yellow/30 bg-black/60 text-gray-500'
             }`}>
               <div className="flex items-center gap-2">
                 <Clock className="w-5 h-5 animate-spin" style={{ animationDuration: '4s' }} />
@@ -199,7 +199,7 @@ export default function PortalTracker() {
               <div className={`p-4 border flex items-center justify-between transition-all ${
                 paymentStatus === 'Approved' 
                   ? 'border-[#10b981] bg-[#10b981]/5 text-[#10b981] shadow-glow-gold' 
-                  : 'border-gray-900 bg-black/60 text-gray-500'
+                  : 'border-eb-yellow/30 bg-black/60 text-gray-500'
               }`}>
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="w-5 h-5 text-eb-yellow" />
@@ -234,7 +234,7 @@ export default function PortalTracker() {
             {/* 2. Room ID / Password reveal block */}
             {paymentStatus === 'Approved' ? (
               <div className="pubg-hud-panel cyber-card p-6 space-y-4 shadow-glow-yellow border-t-2 border-t-eb-yellow">
-                <div className="flex items-center justify-between border-b border-gray-900 pb-2">
+                <div className="flex items-center justify-between border-b border-eb-yellow/30 pb-2">
                   <h4 className="text-xs font-black text-eb-yellow uppercase tracking-widest flex items-center gap-1.5">
                     <Key className="w-4 h-4" />
                     Custom Room Credentials
@@ -247,28 +247,28 @@ export default function PortalTracker() {
                 {event?.roomId && event?.roomPassword ? (
                   <div className="space-y-3">
                     {/* Room ID */}
-                    <div className="flex items-center justify-between bg-black p-3 border border-gray-950 rounded">
+                    <div className="flex items-center justify-between bg-black p-3 border border-eb-yellow/30 rounded">
                       <div>
                         <span className="text-[8px] text-gray-500 block uppercase font-black">Room ID</span>
                         <span className="text-sm font-black text-white font-mono">{event.roomId}</span>
                       </div>
                       <button
                         onClick={() => handleCopy(event.roomId, 'roomId')}
-                        className="p-1.5 text-gray-500 hover:text-white bg-gray-950 hover:bg-gray-900 border border-gray-900 rounded"
+                        className="p-1.5 text-gray-500 hover:text-white bg-gray-950 hover:bg-gray-900 border border-eb-yellow/30 rounded"
                       >
                         {copiedField === 'roomId' ? <Check className="w-4 h-4 text-eb-yellow" /> : <Copy className="w-4 h-4" />}
                       </button>
                     </div>
 
                     {/* Room Password */}
-                    <div className="flex items-center justify-between bg-black p-3 border border-gray-950 rounded">
+                    <div className="flex items-center justify-between bg-black p-3 border border-eb-yellow/30 rounded">
                       <div>
                         <span className="text-[8px] text-gray-500 block uppercase font-black">Password</span>
                         <span className="text-sm font-black text-white font-mono">{event.roomPassword}</span>
                       </div>
                       <button
                         onClick={() => handleCopy(event.roomPassword, 'roomPassword')}
-                        className="p-1.5 text-gray-500 hover:text-white bg-gray-950 hover:bg-gray-900 border border-gray-900 rounded"
+                        className="p-1.5 text-gray-500 hover:text-white bg-gray-950 hover:bg-gray-900 border border-eb-yellow/30 rounded"
                       >
                         {copiedField === 'roomPassword' ? <Check className="w-4 h-4 text-eb-yellow" /> : <Copy className="w-4 h-4" />}
                       </button>
@@ -280,7 +280,7 @@ export default function PortalTracker() {
                     </div>
                   </div>
                 ) : (
-                  <div className="p-6 rounded border border-gray-950 bg-black/60 text-center space-y-2">
+                  <div className="p-6 rounded border border-eb-yellow/30 bg-black/60 text-center space-y-2">
                     <Clock className="w-6 h-6 text-eb-yellow mx-auto" />
                     <p className="text-xs font-black text-gray-400 uppercase tracking-widest">Awaiting Broadcast</p>
                     <p className="text-[10px] text-gray-500 leading-normal font-medium">
@@ -302,7 +302,7 @@ export default function PortalTracker() {
             {/* Roster details panel */}
             <div className="pubg-hud-panel p-5 space-y-3 bg-[#12120e]/40">
               <span className="text-[9px] text-gray-500 uppercase font-black tracking-widest block">Registered Combat Roster</span>
-              <div className="bg-black border border-gray-950 rounded divide-y divide-gray-950 font-mono text-xs">
+              <div className="bg-black border border-eb-yellow/30 rounded divide-y divide-eb-yellow/30 font-mono text-xs">
                 {allCharacterIds?.map((uid, index) => (
                   <div key={index} className="flex justify-between items-center p-3">
                     <span className="text-gray-500 font-bold">Player {index + 1}:</span>
@@ -330,7 +330,7 @@ export default function PortalTracker() {
             
             {paymentStatus === 'Approved' && (
               <div className="pubg-hud-panel p-6 space-y-4">
-                <div className="border-b border-gray-900 pb-3 flex items-center justify-between">
+                <div className="border-b border-eb-yellow/30 pb-3 flex items-center justify-between">
                   <h4 className="text-xs font-black text-white uppercase tracking-widest flex items-center gap-1.5">
                     <Award className="w-4 h-4 text-eb-yellow" />
                     Submit Match Proof
@@ -346,7 +346,7 @@ export default function PortalTracker() {
                       <CheckCircle2 className="w-4.5 h-4.5 text-eb-yellow" />
                       Scoreboard Proof Submitted!
                     </div>
-                    <div className="border border-gray-900 bg-black rounded p-2 text-center">
+                    <div className="border border-eb-yellow/30 bg-black rounded p-2 text-center">
                       <img 
                         src={matchProofScreenshot} 
                         alt="Scoreboard proof confirmation" 
@@ -400,7 +400,7 @@ export default function PortalTracker() {
                         Scoreboard Image File
                       </label>
 
-                      <div className="border border-dashed border-gray-800 hover:border-eb-yellow/30 bg-black/40 rounded p-4 text-center cursor-pointer transition-colors relative overflow-hidden">
+                      <div className="border border-dashed border-eb-yellow/20 hover:border-eb-yellow/30 bg-black/40 rounded p-4 text-center cursor-pointer transition-colors relative overflow-hidden">
                         <input
                           type="file"
                           id="proof-screenshot"
@@ -415,7 +415,7 @@ export default function PortalTracker() {
                               <img
                                 src={proofPreview}
                                 alt="Proof preview uploader"
-                                className="max-h-36 mx-auto rounded border border-gray-900 object-contain"
+                                className="max-h-36 mx-auto rounded border border-eb-yellow/30 object-contain"
                               />
                               <p className="text-[9px] text-eb-yellow font-black uppercase tracking-wider flex items-center justify-center gap-1 animate-pulse">
                                 <FileImage className="w-3.5 h-3.5" /> Change Screenshot
@@ -437,7 +437,7 @@ export default function PortalTracker() {
                       disabled={submittingProof}
                       className={`w-full py-2.5 text-black font-black uppercase text-xs tracking-widest transition-all duration-300 ${
                         submittingProof
-                          ? 'bg-gray-950 text-gray-600 cursor-wait border border-gray-900'
+                          ? 'bg-gray-950 text-gray-600 cursor-wait border border-eb-yellow/30'
                           : 'bg-eb-yellow hover:scale-[1.01]'
                       }`}
                     >
@@ -453,7 +453,7 @@ export default function PortalTracker() {
               <span className="text-[9px] text-gray-500 uppercase font-black tracking-widest block">Verification Receipt Uploaded</span>
               <button
                 onClick={() => handleCopy(paymentScreenshot, 'receipt')}
-                className="group relative block w-full h-32 rounded border border-gray-900 overflow-hidden bg-black focus:outline-none"
+                className="group relative block w-full h-32 rounded border border-eb-yellow/30 overflow-hidden bg-black focus:outline-none"
                 title="Click to copy receipt path"
               >
                 <img 

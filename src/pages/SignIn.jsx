@@ -60,13 +60,8 @@ export default function SignIn() {
         </Link>
 
         <div className="pubg-hud-panel p-8 space-y-6 shadow-glow-yellow relative">
-          {/* Corner brackets */}
-          <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-eb-yellow"></div>
-          <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-eb-yellow"></div>
-          <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-eb-yellow"></div>
-          <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-eb-yellow"></div>
 
-          <div className="text-center border-b border-gray-900 pb-4">
+          <div className="text-center border-b border-eb-yellow/30 pb-4">
             <h2 className="text-xl md:text-2xl font-black uppercase tracking-widest text-white">
               Roster Login
             </h2>
@@ -159,7 +154,7 @@ export default function SignIn() {
                 disabled={submitting}
                 className={`w-full py-3 mt-2 text-black font-black uppercase text-xs tracking-widest transition-all duration-300 ${
                   submitting 
-                    ? 'bg-gray-950 text-gray-655 cursor-wait border border-gray-900' 
+                    ? 'bg-gray-950 text-gray-655 cursor-wait border border-eb-yellow/30' 
                     : 'bg-eb-yellow hover:scale-[1.02]'
                 }`}
               >

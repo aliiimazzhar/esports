@@ -6,7 +6,6 @@ const registrationSchema = new mongoose.Schema({
   trackingUid: { type: String, required: true }, // The first UID entered (acts as primary key)
   allCharacterIds: [{ type: String, required: true }], // Stores all UIDs
   allInGameNames: [{ type: String, required: true }], // Stores IG Names corresponding to UIDs
-  contactPhoneNumber: { type: String, required: true },
   whatsappNumber: { type: String, required: true },
   transactionId: { type: String, required: true },
   paymentScreenshot: { type: String, required: true }, // Cloudinary URL
@@ -15,6 +14,8 @@ const registrationSchema = new mongoose.Schema({
   rank: { type: Number, default: null }, // Final rank in the tournament
   points: { type: Number, default: 0 }, // Total points achieved
   playerKills: { type: [Number], default: [] }, // Kills per player for squad tournaments
+  groupStageSeed: { type: Number, default: null },
+  groupStageGroup: { type: String, enum: ['A', 'B', 'C'], default: null },
   createdAt: { type: Date, default: Date.now }
 });
 

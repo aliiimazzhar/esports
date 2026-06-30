@@ -1,18 +1,15 @@
 import React, { useContext, useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { AppContext } from '../context/AppContext';
-import { User, Phone, Trophy, DoorOpen, Key, Copy, Check, Upload, FileImage, ShieldCheck, AlertTriangle, Shield, CheckCircle, Crosshair, Target } from 'lucide-react';
-import RegisterModal from '../components/RegisterModal';
+import { Trophy, DoorOpen, Key, Copy, Check, Upload, AlertTriangle, Shield, CheckCircle, Crosshair, Target } from 'lucide-react';
 
 export default function Dashboard() {
-  const { user, activeEvent, fetchUserRegistrations, submitMatchProof } = useContext(AppContext);
+  const { user, fetchUserRegistrations, submitMatchProof } = useContext(AppContext);
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
 
   const [registrations, setRegistrations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [copiedId, setCopiedId] = useState('');
-  const [isRegisterOpen, setIsRegisterOpen] = useState(false);
 
   // Match proof upload states
   const [proofFile, setProofFile] = useState(null);
@@ -21,21 +18,19 @@ export default function Dashboard() {
   const [proofError, setProofError] = useState('');
   const [proofSuccess, setProofSuccess] = useState('');
 
-  // Live ticker to keep track of current time and automatically unlock lobby details
+  // Schedules state per event: { [eventId]: scheduleMatches }
+  const [schedules, setSchedules] = useState({});
+  const [loadingSchedules, setLoadingSchedules] = useState(false);
+
+  // Live timer tick to keep track of current time and automatically unlock lobby details
   const [now, setNow] = useState(new Date());
 
   useEffect(() => {
     const timer = setInterval(() => {
       setNow(new Date());
-    }, 10000); // Ticks every 10 seconds to update time comparisons
+    }, 1000); // Ticks every 1 second to update countdowns
     return () => clearInterval(timer);
   }, []);
-
-  const isLobbyOpen = (matchStartTime) => {
-    if (!matchStartTime) return false;
-    const matchTime = new Date(matchStartTime);
-    return (matchTime - now) <= 15 * 60 * 1000;
-  };
 
   // Redirect to signin if not authenticated
   useEffect(() => {
@@ -62,6 +57,72 @@ export default function Dashboard() {
   useEffect(() => {
     loadUserRegistrations();
   }, [user]);
+
+  // Fetch match schedule rotation for all registered tournaments
+  useEffect(() => {
+    const fetchAllSchedules = async () => {
+      if (registrations.length === 0) return;
+      setLoadingSchedules(true);
+      const newSchedules = {};
+      for (const reg of registrations) {
+        if (!reg.eventId?._id) continue;
+        if (newSchedules[reg.eventId._id]) continue;
+        try {
+          const response = await fetch(`/api/events/${reg.eventId._id}/group-stage/schedule`);
+          if (response.ok) {
+            const data = await response.json();
+            newSchedules[reg.eventId._id] = data;
+          }
+        } catch (err) {
+          console.error(`Error fetching schedule for event ${reg.eventId._id}:`, err);
+        }
+      }
+      setSchedules(newSchedules);
+      setLoadingSchedules(false);
+    };
+
+    fetchAllSchedules();
+  }, [registrations]);
+
+  const isLobbyOpen = (matchStartTime) => {
+    if (!matchStartTime) return false;
+    const matchTime = new Date(matchStartTime);
+    return (matchTime - now) <= 15 * 60 * 1000;
+  };
+
+  const getCountdownStr = (matchDate) => {
+    if (!matchDate) return '';
+    const matchTime = new Date(matchDate);
+    const diff = matchTime - now;
+
+    if (diff <= 0) {
+      return 'MATCH LIVE';
+    }
+
+    const secs = Math.floor((diff / 1000) % 60);
+    const mins = Math.floor((diff / (1000 * 60)) % 60);
+    const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+
+    let str = '';
+    if (days > 0) str += `${days}d `;
+    if (hours > 0 || days > 0) str += `${hours}h `;
+    str += `${mins}m ${secs}s`;
+
+    return str;
+  };
+
+  const getNextMatch = (reg, eventSchedule) => {
+    if (!eventSchedule || eventSchedule.length === 0) return null;
+    const myGroup = reg.groupStageGroup;
+    if (!myGroup) return null;
+    const myMatches = eventSchedule.filter(m => {
+      return m.matchup.split(' vs ').map(g => g.trim()).includes(myGroup);
+    });
+    return myMatches
+      .filter(m => !m.isPlayed)
+      .sort((a, b) => new Date(a.matchDate) - new Date(b.matchDate))[0];
+  };
 
   const handleCopy = (text, key) => {
     navigator.clipboard.writeText(text);
@@ -108,7 +169,6 @@ export default function Dashboard() {
     setProofSuccess('');
 
     const formData = new FormData();
-    // FIX 9: Send registrationId directly — server verifies ownership via JWT
     formData.append('registrationId', registration._id);
     formData.append('matchProofScreenshot', proofFile);
 
@@ -118,7 +178,6 @@ export default function Dashboard() {
         setProofSuccess('Scoreboard proof uploaded successfully!');
         setProofFile(null);
         setProofPreview(null);
-        // Reload registrations to show updated state
         await loadUserRegistrations();
       } else {
         setProofError(res.data?.error || 'Failed to upload scoreboard proof.');
@@ -130,8 +189,6 @@ export default function Dashboard() {
     }
   };
 
-
-  // Format date helper
   const formatDateTime = (dateStr) => {
     if (!dateStr) return '';
     const date = new Date(dateStr);
@@ -146,258 +203,309 @@ export default function Dashboard() {
 
   if (!user) return null;
 
-  // Active registration for the active event (if exists)
-  const activeReg = activeEvent 
-    ? registrations.find(reg => reg.eventId?._id === activeEvent._id)
-    : null;
-
   return (
     <div className="min-h-screen bg-black py-12 px-4 md:px-8">
       <div className="max-w-6xl mx-auto space-y-8 animate-fadeIn">
         
         {/* Header HUD Banner */}
-        <div className="border-b border-gray-900 pb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="border-b border-eb-yellow/30 pb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">
             <h2 className="text-3xl font-extrabold uppercase text-white tracking-wider">
-              Combatant <span className="text-eb-yellow">Dashboard</span>
+              Dashboard
             </h2>
-            <p className="text-gray-500 text-xs font-semibold">
-              Manage your tournament entries, review approvals, and access lobby credentials.
-            </p>
-          </div>
-          
-          <div className="flex items-center gap-3 px-4 py-2.5 bg-[#12120e] border border-white/5">
-            <div className="w-8 h-8 rounded bg-eb-yellow/10 flex items-center justify-center border border-eb-yellow/30">
-              <User className="w-4 h-4 text-eb-yellow" />
-            </div>
-            <div>
-              <p className="text-xs font-bold text-white font-mono uppercase tracking-wide leading-none">{user.uid}</p>
-              <span className="text-[9px] text-gray-500 font-bold uppercase tracking-wider block mt-0.5">{user.phoneNumber}</span>
-            </div>
           </div>
         </div>
 
         {/* Dashboard Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           
-          {/* Left Column: Active Tournament Controls (8 cols) */}
+          {/* Left Column: Registered Tournaments list (8 cols) */}
           <div className="lg:col-span-8 space-y-6">
             
-            {/* Active Tournament Status Panel */}
-            <div className="pubg-hud-panel p-6 space-y-5">
-              <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-eb-yellow"></div>
-              <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-eb-yellow"></div>
-              <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-eb-yellow"></div>
-              <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-eb-yellow"></div>
+            {loading ? (
+              <div className="text-center py-12 text-xs text-gray-500 font-mono">Syncing Registry...</div>
+            ) : registrations.length > 0 ? (
+              registrations.map((reg) => {
+                const event = reg.eventId;
+                if (!event) return null;
+                const eventSchedule = schedules[event._id] || [];
+                const nextMatch = getNextMatch(reg, eventSchedule);
+                const myGroup = reg.groupStageGroup;
 
-              <div className="flex items-center justify-between border-b border-gray-900 pb-3">
-                <h3 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-1.5">
-                  <Trophy className="w-4.5 h-4.5 text-eb-yellow" />
-                  Active Tournament
-                </h3>
-                {activeEvent ? (
-                  <span className="px-2 py-0.5 text-[8px] font-black uppercase bg-eb-yellow text-black tracking-wider">
-                    MISSION ACTIVE
-                  </span>
-                ) : (
-                  <span className="px-2 py-0.5 text-[8px] font-black uppercase bg-gray-900 text-gray-500 tracking-wider">
-                    NO ACTIVE EVENT
-                  </span>
-                )}
-              </div>
-
-              {activeEvent ? (
-                <div className="space-y-5">
-                  {/* Tournament quick details */}
-                  <div className="flex flex-col sm:flex-row justify-between gap-4 bg-black/60 p-4 border border-gray-950">
-                    <div>
-                      <h4 className="text-lg font-extrabold uppercase text-white tracking-wide">{activeEvent.title}</h4>
-                      <p className="text-[10px] text-gray-500 font-bold uppercase mt-0.5">Map: {activeEvent.map || 'Erangel'} | Format: {activeEvent.type || 'Squad'}</p>
+                return (
+                  <div key={reg._id} className="pubg-hud-panel p-6 space-y-5 border border-eb-yellow/30 bg-[#12120e]/60">
+                    {/* Tournament Header */}
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-eb-yellow/30 pb-3 gap-2">
+                      <div className="space-y-0.5">
+                        <span className="text-[9px] text-eb-yellow font-black uppercase tracking-wider block">
+                          Format: {event.type || 'Squad'} Tournament
+                        </span>
+                        <h3 className="text-xl font-extrabold uppercase text-white tracking-wide">
+                          {event.title}
+                        </h3>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className={`px-2.5 py-0.5 text-[8px] font-black uppercase border rounded-sm ${
+                          reg.paymentStatus === 'Approved'
+                            ? 'bg-[#10b981]/15 text-[#10b981] border-[#10b981]/30'
+                            : reg.paymentStatus === 'Rejected'
+                              ? 'bg-red-500/10 text-red-500 border-red-500/20'
+                              : 'bg-harvest/15 text-eb-yellow border-harvest/30 animate-pulse'
+                        }`}>
+                          PAYMENT: {reg.paymentStatus}
+                        </span>
+                        <span className="px-2.5 py-0.5 text-[8px] font-black uppercase bg-eb-yellow/10 text-eb-yellow border border-eb-yellow/20">
+                          {event.status === 'active' ? 'OPEN' : event.status?.toUpperCase()}
+                        </span>
+                      </div>
                     </div>
-                    <div className="text-left sm:text-right">
-                      <span className="text-[8px] text-gray-500 uppercase font-black tracking-wider block">Entry Fees</span>
-                      <p className="text-xs text-gold font-bold">Solo: PKR {activeEvent.soloEntryFee} | Team: PKR {activeEvent.teamEntryFee}</p>
-                    </div>
-                  </div>
 
-                  {/* Check registration state */}
-                  {activeReg ? (
-                    <div className="space-y-4">
-                      {/* Already registered message */}
-                      <div className="p-4 bg-black/40 border border-white/5 space-y-4">
-                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-gray-950 pb-3">
-                          <div>
-                            <span className="text-[8px] text-gray-500 uppercase font-black block">ROSTER REGISTRATION STATUS</span>
-                            <span className="text-xs text-white font-mono font-bold">Roster Lead UID: {activeReg.trackingUid}</span>
-                          </div>
-                          <span className={`inline-flex px-3 py-1 rounded-sm text-[10px] font-black uppercase border ${
-                            activeReg.paymentStatus === 'Approved'
-                              ? 'bg-[#10b981]/15 text-[#10b981] border-[#10b981]/30'
-                              : activeReg.paymentStatus === 'Rejected'
-                                ? 'bg-red-500/10 text-red-500 border-red-500/20'
-                                : 'bg-harvest/15 text-eb-yellow border-harvest/30 animate-pulse'
-                          }`}>
-                            {activeReg.paymentStatus}
+                    {/* Roster & Group Info */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-black/60 p-4 border border-eb-yellow/30 text-xs">
+                      <div className="space-y-1">
+                        <span className="text-[8px] text-gray-500 uppercase font-black block">ROSTER REGISTRATION STATUS</span>
+                        <span className="text-xs text-white font-mono font-bold">Roster Lead UID: {reg.trackingUid}</span>
+                        {myGroup && (
+                          <span className="block text-[10px] text-eb-yellow font-bold uppercase mt-0.5">
+                            Group Stage Assignment: Group {myGroup}
                           </span>
-                        </div>
+                        )}
+                      </div>
+                      <div className="text-left sm:text-right space-y-0.5">
+                        <span className="text-[8px] text-gray-500 uppercase font-black tracking-wider block">Timing</span>
+                        <p className="text-white font-bold">{formatDateTime(event.matchStartTime)}</p>
+                      </div>
+                    </div>
 
-                        {/* Approved -> Show Room Details */}
-                        {activeReg.paymentStatus === 'Approved' ? (
-                          <div className="space-y-3">
-                            <div className="p-4 bg-eb-yellow/[0.02] border border-eb-yellow/30 rounded space-y-3 relative">
-                              <div className="absolute top-0 right-0 p-1.5 bg-eb-yellow/10 border-bl border-eb-yellow/30">
-                                <Key className="w-3.5 h-3.5 text-eb-yellow" />
-                              </div>
-                              <h5 className="text-[10px] font-black text-eb-yellow uppercase tracking-widest">Lobby Access Credentials</h5>
-                              
-                              {isLobbyOpen(activeReg.eventId?.matchStartTime) ? (
-                                activeReg.eventId?.roomId ? (
-                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    <div className="flex items-center justify-between bg-black p-2.5 border border-gray-950 rounded">
-                                      <div>
-                                        <span className="text-[8px] text-gray-500 block uppercase font-bold tracking-wider">Room ID</span>
-                                        <span className="text-sm font-black text-white font-mono">{activeReg.eventId.roomId}</span>
-                                      </div>
-                                      <button
-                                        onClick={() => handleCopy(activeReg.eventId.roomId, 'roomId')}
-                                        className="p-1.5 text-gray-500 hover:text-white"
-                                      >
-                                        {copiedId === 'roomId' ? <Check className="w-4 h-4 text-eb-yellow" /> : <Copy className="w-4 h-4" />}
-                                      </button>
-                                    </div>
-
-                                    <div className="flex items-center justify-between bg-black p-2.5 border border-gray-950 rounded">
-                                      <div>
-                                        <span className="text-[8px] text-gray-500 block uppercase font-bold tracking-wider">Password</span>
-                                        <span className="text-sm font-black text-white font-mono">{activeReg.eventId.roomPassword}</span>
-                                      </div>
-                                      <button
-                                        onClick={() => handleCopy(activeReg.eventId.roomPassword, 'roomPass')}
-                                        className="p-1.5 text-gray-500 hover:text-white"
-                                      >
-                                        {copiedId === 'roomPass' ? <Check className="w-4 h-4 text-eb-yellow" /> : <Copy className="w-4 h-4" />}
-                                      </button>
-                                    </div>
-                                  </div>
-                                ) : (
-                                  <div className="p-3 bg-black/40 border border-gray-950 text-center rounded text-gold text-[10px] font-bold">
-                                    Lobby is open, but Room credentials have not been configured by the organizer yet.
-                                  </div>
-                                )
-                              ) : (
-                                <div className="p-3 bg-black/40 border border-gray-950 text-center rounded text-gray-500 text-xs">
-                                  Lobby is not open yet. Credentials will unlock automatically 15 minutes before the match start time.
-                                </div>
-                              )}
+                    {/* Approved -> Show Room Details & Next Match Countdown */}
+                    {reg.paymentStatus === 'Approved' ? (
+                      <div className="space-y-4">
+                        {/* COUNTDOWN TIMER BOX */}
+                        {nextMatch && (
+                          <div className="p-4 bg-black/60 border border-eb-yellow/30 text-center space-y-2 rounded">
+                            <span className="text-[8px] text-gray-500 uppercase font-black tracking-wider block">Your Next Match</span>
+                            <h4 className="text-sm font-extrabold text-white uppercase tracking-wider">
+                              Match #{nextMatch.matchNumber} ({nextMatch.matchup}) - {nextMatch.map}
+                            </h4>
+                            <div className="text-2xl font-black text-eb-yellow font-mono tracking-widest animate-pulse">
+                              {getCountdownStr(nextMatch.matchDate)}
                             </div>
+                            <span className="text-[9px] text-gray-500 font-bold uppercase block mt-1">
+                              Starts at: {formatDateTime(nextMatch.matchDate)}
+                            </span>
+                          </div>
+                        )}
 
-                            {/* Scoreboard Upload section */}
-                            <div className="border-t border-gray-950 pt-4 space-y-3">
-                              <h5 className="text-[10px] font-black text-white uppercase tracking-widest">Submit Post-Match Proof</h5>
-                              
-                              {activeReg.matchProofScreenshot ? (
-                                <div className="p-3 bg-black/60 border border-gray-950 flex items-center justify-between text-xs text-gray-400">
-                                  <span className="flex items-center gap-1.5 text-eb-yellow">
-                                    <CheckCircle className="w-4 h-4" /> Scoreboard Proof Uploaded
-                                  </span>
-                                  <a 
-                                    href={activeReg.matchProofScreenshot} 
-                                    target="_blank" 
-                                    rel="noreferrer" 
-                                    className="text-gray-500 hover:text-white hover:underline text-[10px] uppercase font-bold"
-                                  >
-                                    View Submission
-                                  </a>
-                                </div>
-                              ) : (
-                                <form onSubmit={(e) => handleProofSubmit(e, activeReg)} className="space-y-3">
-                                  {proofSuccess && <p className="text-eb-yellow text-[10px] font-bold">{proofSuccess}</p>}
-                                  {proofError && <p className="text-tan text-[10px] font-bold">{proofError}</p>}
-                                  
-                                  <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-                                    <div className="flex-1 w-full relative border border-dashed border-gray-800 hover:border-eb-yellow/30 bg-black/50 p-4 rounded text-center cursor-pointer">
-                                      <input 
-                                        type="file" 
-                                        id="proof-upload"
-                                        onChange={handleProofFileChange}
-                                        accept="image/*"
-                                        className="hidden"
-                                        disabled={proofLoading}
-                                      />
-                                      <label htmlFor="proof-upload" className="cursor-pointer w-full text-center block space-y-1">
-                                        {proofPreview ? (
-                                          <div className="space-y-1">
-                                            <img src={proofPreview} alt="Proof" className="max-h-20 mx-auto rounded" />
-                                            <p className="text-[8px] text-eb-yellow font-black uppercase">Change Scoreboard Screenshot</p>
-                                          </div>
-                                        ) : (
-                                          <div className="text-gray-500 space-y-1">
-                                            <Upload className="w-5 h-5 text-eb-yellow mx-auto" />
-                                            <p className="text-[10px] font-black uppercase text-gray-400">Click to upload scoreboard screenshot</p>
-                                            <span className="text-[8px] block">PNG, JPG, JPEG (Max 5MB)</span>
-                                          </div>
-                                        )}
-                                      </label>
+                        {/* Lobby Credentials */}
+                        <div className="p-4 bg-eb-yellow/[0.02] border border-eb-yellow/30 rounded space-y-3 relative">
+                          <div className="absolute top-0 right-0 p-1.5 bg-eb-yellow/10 border-bl border-eb-yellow/30">
+                            <Key className="w-3.5 h-3.5 text-eb-yellow" />
+                          </div>
+                          <h5 className="text-[10px] font-black text-eb-yellow uppercase tracking-widest">Lobby Access Credentials</h5>
+                          
+                          {nextMatch ? (
+                            isLobbyOpen(nextMatch.matchDate) ? (
+                              nextMatch.roomId ? (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                  <div className="flex items-center justify-between bg-black p-2.5 border border-eb-yellow/30 rounded">
+                                    <div>
+                                      <span className="text-[8px] text-gray-500 block uppercase font-bold tracking-wider">Room ID (Match #{nextMatch.matchNumber})</span>
+                                      <span className="text-sm font-black text-white font-mono">{nextMatch.roomId}</span>
                                     </div>
                                     <button
-                                      type="submit"
-                                      disabled={proofLoading || !proofFile}
-                                      className={`w-full sm:w-auto px-6 py-4 text-black font-black uppercase text-xs tracking-widest ${
-                                        proofLoading || !proofFile
-                                          ? 'bg-gray-900 text-gray-655 cursor-not-allowed border border-gray-950'
-                                          : 'bg-eb-yellow hover:scale-[1.01]'
-                                      }`}
+                                      type="button"
+                                      onClick={() => handleCopy(nextMatch.roomId, `${reg._id}_roomId`)}
+                                      className="p-1.5 text-gray-500 hover:text-white"
                                     >
-                                      {proofLoading ? 'Uploading...' : 'Submit Proof'}
+                                      {copiedId === `${reg._id}_roomId` ? <Check className="w-4 h-4 text-eb-yellow" /> : <Copy className="w-4 h-4" />}
                                     </button>
                                   </div>
-                                </form>
-                              )}
+
+                                  <div className="flex items-center justify-between bg-black p-2.5 border border-eb-yellow/30 rounded">
+                                    <div>
+                                      <span className="text-[8px] text-gray-500 block uppercase font-bold tracking-wider">Password</span>
+                                      <span className="text-sm font-black text-white font-mono">{nextMatch.roomPassword}</span>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleCopy(nextMatch.roomPassword, `${reg._id}_roomPass`)}
+                                      className="p-1.5 text-gray-500 hover:text-white"
+                                    >
+                                      {copiedId === `${reg._id}_roomPass` ? <Check className="w-4 h-4 text-eb-yellow" /> : <Copy className="w-4 h-4" />}
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="p-3 bg-black/40 border border-eb-yellow/30 text-center rounded text-gold text-[10px] font-bold">
+                                  Lobby is open, but Room credentials have not been configured by the organizer yet.
+                                </div>
+                              )
+                            ) : (
+                              <div className="p-3 bg-black/40 border border-eb-yellow/30 text-center rounded text-gray-500 text-xs">
+                                Lobby is not open yet. Credentials for Match #{nextMatch.matchNumber} will unlock automatically 15 minutes before the match start time.
+                              </div>
+                            )
+                          ) : (
+                            <div className="p-3 bg-black/40 border border-eb-yellow/30 text-center rounded text-gray-500 text-xs">
+                              No upcoming matches found for Group {myGroup || 'N/A'}.
                             </div>
-                          </div>
-                        ) : activeReg.paymentStatus === 'Pending' ? (
-                          <div className="p-4 bg-black/20 border border-gray-950 text-center rounded space-y-1.5 text-xs text-gray-500">
-                            <DoorOpen className="w-6 h-6 text-gray-700 mx-auto animate-pulse" />
-                            <p className="font-bold text-gray-400 uppercase tracking-widest">Audit Underway</p>
-                            <p className="font-medium text-[11px] leading-relaxed max-w-xs mx-auto">
-                              Your payment screenshot and Transaction ID are being validated. Lobby codes will unlock immediately upon approval.
-                            </p>
-                          </div>
-                        ) : (
-                          <div className="p-4 bg-red-950/10 border border-red-950 text-center rounded space-y-1 text-xs text-red-500">
-                            <AlertTriangle className="w-6 h-6 text-red-500 mx-auto" />
-                            <p className="font-bold uppercase tracking-widest">Registration Rejected</p>
-                            <p className="text-[11px]">Please contact support or re-register with valid transaction details.</p>
+                          )}
+                        </div>
+
+                        {/* Scoreboard Upload section */}
+                        <div className="border-t border-eb-yellow/30 pt-4 space-y-3">
+                          <h5 className="text-[10px] font-black text-white uppercase tracking-widest">Submit Post-Match Proof</h5>
+                          
+                          {reg.matchProofScreenshot ? (
+                            <div className="p-3 bg-black/60 border border-eb-yellow/30 flex items-center justify-between text-xs text-gray-400">
+                              <span className="flex items-center gap-1.5 text-eb-yellow">
+                                <CheckCircle className="w-4 h-4" /> Scoreboard Proof Uploaded
+                              </span>
+                              <a 
+                                href={reg.matchProofScreenshot} 
+                                target="_blank" 
+                                rel="noreferrer" 
+                                className="text-gray-500 hover:text-white hover:underline text-[10px] uppercase font-bold"
+                              >
+                                View Submission
+                              </a>
+                            </div>
+                          ) : (
+                            <form onSubmit={(e) => handleProofSubmit(e, reg)} className="space-y-3">
+                              {proofSuccess && <p className="text-eb-yellow text-[10px] font-bold">{proofSuccess}</p>}
+                              {proofError && <p className="text-tan text-[10px] font-bold">{proofError}</p>}
+                              
+                              <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+                                <div className="flex-1 w-full relative border border-dashed border-eb-yellow/20 hover:border-eb-yellow/30 bg-black/50 p-4 rounded text-center cursor-pointer">
+                                  <input 
+                                    type="file" 
+                                    id={`proof-upload-${reg._id}`}
+                                    onChange={handleProofFileChange}
+                                    accept="image/*"
+                                    className="hidden"
+                                    disabled={proofLoading}
+                                  />
+                                  <label htmlFor={`proof-upload-${reg._id}`} className="cursor-pointer w-full text-center block space-y-1">
+                                    {proofPreview ? (
+                                      <div className="space-y-1">
+                                        <img src={proofPreview} alt="Proof" className="max-h-20 mx-auto rounded" />
+                                        <p className="text-[8px] text-eb-yellow font-black uppercase">Change Scoreboard Screenshot</p>
+                                      </div>
+                                    ) : (
+                                      <div className="text-gray-500 space-y-1">
+                                        <Upload className="w-5 h-5 text-eb-yellow mx-auto" />
+                                        <p className="text-[10px] font-black uppercase text-gray-400">Click to upload scoreboard screenshot</p>
+                                        <span className="text-[8px] block">PNG, JPG, JPEG (Max 5MB)</span>
+                                      </div>
+                                    )}
+                                  </label>
+                                </div>
+                                <button
+                                  type="submit"
+                                  disabled={proofLoading || !proofFile}
+                                  className={`w-full sm:w-auto px-6 py-4 text-black font-black uppercase text-xs tracking-widest ${
+                                    proofLoading || !proofFile
+                                      ? 'bg-gray-900 text-gray-655 cursor-not-allowed border border-eb-yellow/30'
+                                      : 'bg-eb-yellow hover:scale-[1.01]'
+                                  }`}
+                                >
+                                  {proofLoading ? 'Uploading...' : 'Submit Proof'}
+                                </button>
+                              </div>
+                            </form>
+                          )}
+                        </div>
+
+                        {/* Match Schedule Display */}
+                        {eventSchedule.length > 0 && (
+                          <div className="border-t border-eb-yellow/30 pt-5 space-y-4">
+                            <h4 className="text-xs font-black uppercase text-white tracking-widest flex items-center gap-1.5">
+                              <Crosshair className="w-4 h-4 text-eb-yellow" /> Match Schedule Rotation
+                            </h4>
+                            <div className="overflow-x-auto border border-eb-yellow/30 bg-black/60 rounded">
+                              <table className="w-full text-left text-xs border-collapse font-sans">
+                                <thead>
+                                  <tr className="bg-black text-gray-400 font-black uppercase tracking-wider border-b border-eb-yellow/30 text-[9px]">
+                                    <th className="p-3">Match</th>
+                                    <th className="p-3">Day</th>
+                                    <th className="p-3">Matchup</th>
+                                    <th className="p-3">Map</th>
+                                    <th className="p-3">Date/Time</th>
+                                    <th className="p-3">Status</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-eb-yellow/30 text-gray-300">
+                                  {eventSchedule.map((m) => {
+                                    const isMyMatch = myGroup && m.matchup.split(' vs ').map(g => g.trim()).includes(myGroup);
+                                    return (
+                                      <tr key={m._id} className={`hover:bg-white/[0.01] transition-colors ${
+                                        isMyMatch ? 'bg-eb-yellow/[0.01] border-l-2 border-eb-yellow' : ''
+                                      }`}>
+                                        <td className="p-3 font-mono font-bold">#{m.matchNumber}</td>
+                                        <td className="p-3 font-mono font-semibold">Day {m.dayNumber}</td>
+                                        <td className="p-3 font-bold text-white uppercase">
+                                          <div className="flex items-center gap-1.5">
+                                            {m.matchup}
+                                            {isMyMatch && (
+                                              <span className="px-1 py-0.2 rounded-sm bg-eb-yellow/10 border border-eb-yellow/30 text-eb-yellow text-[7px] font-black uppercase font-mono">
+                                                Your Match
+                                              </span>
+                                            )}
+                                          </div>
+                                        </td>
+                                        <td className="p-3 font-bold font-mono text-eb-yellow">{m.map}</td>
+                                        <td className="p-3 text-[11px] font-medium text-gray-400">{formatDateTime(m.matchDate)}</td>
+                                        <td className="p-3">
+                                          <span className={`px-1.5 py-0.5 rounded text-[8px] font-black font-mono uppercase ${
+                                            m.isPlayed ? 'bg-green-500/10 text-green-400' : 'bg-tan/10 text-gold'
+                                          }`}>
+                                            {m.isPlayed ? 'Played' : 'Scheduled'}
+                                          </span>
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
                           </div>
                         )}
                       </div>
-                    </div>
-                  ) : (
-                    /* Not Registered -> Prompt registration */
-                    <div className="p-6 bg-black/40 border border-white/5 rounded text-center space-y-4">
-                      <Shield className="w-10 h-10 text-eb-yellow mx-auto" />
-                      <div>
-                        <h4 className="text-sm font-black text-white uppercase tracking-wider">Not Registered</h4>
-                        <p className="text-gray-500 text-xs mt-1 leading-relaxed max-w-xs mx-auto">
-                          You have not registered for this tournament yet. Complete registration to unlock lobby combat codes.
+                    ) : reg.paymentStatus === 'Pending' ? (
+                      <div className="p-4 bg-black/20 border border-eb-yellow/30 text-center rounded space-y-1.5 text-xs text-gray-500">
+                        <DoorOpen className="w-6 h-6 text-gray-700 mx-auto animate-pulse" />
+                        <p className="font-bold text-gray-400 uppercase tracking-widest">Audit Underway</p>
+                        <p className="font-medium text-[11px] leading-relaxed max-w-xs mx-auto">
+                          Your payment screenshot and Transaction ID are being validated. Lobby codes will unlock immediately upon approval.
                         </p>
                       </div>
-                      <button
-                        onClick={() => setIsRegisterOpen(true)}
-                        className="pubg-btn-primary px-8"
-                      >
-                        Register Roster Now
-                      </button>
-                    </div>
-                  )}
+                    ) : (
+                      <div className="p-4 bg-red-950/10 border border-red-950 text-center rounded space-y-1 text-xs text-red-500">
+                        <AlertTriangle className="w-6 h-6 text-red-500 mx-auto" />
+                        <p className="font-bold uppercase tracking-widest">Registration Rejected</p>
+                        <p className="text-[11px]">Please contact support or re-register with valid transaction details.</p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            ) : (
+              <div className="text-center py-12 bg-[#12120e]/60 border border-eb-yellow/30 rounded space-y-4">
+                <Shield className="w-12 h-12 text-eb-yellow mx-auto" />
+                <div className="space-y-1">
+                  <h4 className="text-base font-black text-white uppercase tracking-wider">No Registered Tournaments</h4>
+                  <p className="text-gray-500 text-xs leading-relaxed max-w-xs mx-auto">
+                    You have not registered for any tournaments yet. Head over to the Homepage to find active/open tournaments and secure your slot!
+                  </p>
                 </div>
-              ) : (
-                <div className="text-center py-12 bg-black/40 border border-white/5 rounded space-y-3">
-                  <Shield className="w-10 h-10 text-gray-705 mx-auto" />
-                  <p className="text-gray-500 text-xs font-bold uppercase tracking-wider">No active matches open for registration</p>
-                </div>
-              )}
-            </div>
+                <button
+                  onClick={() => navigate('/')}
+                  className="pubg-btn-primary px-8"
+                >
+                  Find Tournaments
+                </button>
+              </div>
+            )}
 
           </div>
 
@@ -406,12 +514,8 @@ export default function Dashboard() {
             
             {/* History Panel */}
             <div className="pubg-hud-panel p-6 space-y-4">
-              <div className="absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2 border-eb-yellow"></div>
-              <div className="absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2 border-eb-yellow"></div>
-              <div className="absolute bottom-0 left-0 w-3 h-3 border-b-2 border-l-2 border-eb-yellow"></div>
-              <div className="absolute bottom-0 right-0 w-3 h-3 border-b-2 border-r-2 border-eb-yellow"></div>
 
-              <h3 className="text-xs font-black text-white uppercase tracking-widest border-b border-gray-900 pb-2.5">
+              <h3 className="text-xs font-black text-white uppercase tracking-widest border-b border-eb-yellow/30 pb-2.5">
                 Player History
               </h3>
 
@@ -436,7 +540,7 @@ export default function Dashboard() {
                 });
 
                 return (
-                  <div className="grid grid-cols-3 gap-2 bg-[#12120e] p-3 border border-white/5 rounded text-center">
+                  <div className="grid grid-cols-3 gap-2 bg-[#12120e] p-3 border border-eb-yellow/30 rounded text-center">
                     <div className="space-y-1">
                       <span className="text-[8px] text-gray-500 block uppercase font-bold tracking-wider">Played</span>
                       <div className="flex items-center justify-center gap-1 text-white font-black text-sm">
@@ -444,7 +548,7 @@ export default function Dashboard() {
                         {tournamentsPlayed}
                       </div>
                     </div>
-                    <div className="space-y-1 border-x border-gray-900">
+                    <div className="space-y-1 border-x border-eb-yellow/30">
                       <span className="text-[8px] text-gray-500 block uppercase font-bold tracking-wider">Avg Rank</span>
                       <div className="flex items-center justify-center gap-1 text-white font-black text-sm">
                         <Trophy className="w-3.5 h-3.5 text-eb-yellow" />
@@ -479,7 +583,7 @@ export default function Dashboard() {
                     }
 
                     return (
-                      <div key={reg._id} className="p-3 bg-black border border-gray-950 rounded flex flex-col justify-between gap-2 text-xs animate-fadeIn">
+                      <div key={reg._id} className="p-3 bg-black border border-eb-yellow/30 rounded flex flex-col justify-between gap-2 text-xs animate-fadeIn">
                         <div className="flex justify-between items-start gap-2">
                           <div className="min-w-0 flex-1">
                             <h4 className="font-extrabold text-white uppercase truncate text-[11px] leading-tight">{reg.eventId?.title || 'Unknown Event'}</h4>
@@ -497,13 +601,13 @@ export default function Dashboard() {
                         </div>
                         
                         {reg.paymentStatus === 'Approved' && (
-                          <div className="flex justify-between items-center border-t border-gray-950 pt-2 text-[10px] font-mono">
+                          <div className="flex justify-between items-center border-t border-eb-yellow/30 pt-2 text-[10px] font-mono">
                             <span className="text-gray-400">Rank: <strong className="text-white">{reg.rank ? `#${reg.rank}` : 'TBD'}</strong></span>
                             <span className="text-gray-400">Kills: <strong className="text-eb-yellow">{myKills}</strong></span>
                           </div>
                         )}
 
-                        <div className="flex justify-between items-center border-t border-gray-950 pt-1.5 text-[9px] text-gray-500 font-semibold">
+                        <div className="flex justify-between items-center border-t border-eb-yellow/30 pt-1.5 text-[9px] text-gray-500 font-semibold">
                           <span>{formatDateTime(reg.createdAt)}</span>
                           <span className="uppercase text-gray-500">{reg.registrationType} Format</span>
                         </div>
@@ -523,8 +627,6 @@ export default function Dashboard() {
         </div>
 
       </div>
-
-      <RegisterModal isOpen={isRegisterOpen} onClose={() => { setIsRegisterOpen(false); loadUserRegistrations(); }} />
     </div>
   );
 }

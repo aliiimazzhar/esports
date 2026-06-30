@@ -66,12 +66,7 @@ export default function AdminPanel() {
   if (currentUser.role !== 'admin') {
     return (
       <div className="min-h-screen bg-black flex flex-col items-center justify-center p-8 text-center">
-        <div className="p-8 max-w-md bg-[#12120e] border border-tan/30 rounded relative shadow-lg">
-          {/* Brackets */}
-          <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-tan"></div>
-          <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-tan"></div>
-          <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-tan"></div>
-          <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-tan"></div>
+        <div className="pubg-hud-panel p-8 max-w-md bg-[#12120e] border border-tan/30 rounded relative shadow-lg" style={{ '--hud-corner-color': '#9C4100' }}>
 
           <div className="space-y-4">
             <ShieldAlert className="w-14 h-14 text-tan mx-auto animate-pulse" />
@@ -79,7 +74,7 @@ export default function AdminPanel() {
             <p className="text-gray-400 text-xs leading-relaxed font-semibold">
               Organizer Panel controls require Admin level authorization flags.
             </p>
-            <div className="bg-black/60 p-3 rounded-sm text-[11px] text-gray-500 border border-gray-950 font-medium">
+            <div className="bg-black/60 p-3 rounded-sm text-[11px] text-gray-500 border border-eb-yellow/30 font-medium">
               Click the <span className="font-bold text-eb-yellow uppercase">"Captain Mode"</span> switcher in the navbar profile to enable Admin Mode features.
             </div>
           </div>
@@ -309,7 +304,7 @@ export default function AdminPanel() {
       <div className="max-w-6xl mx-auto space-y-6">
         
         {/* Admin Dashboard header */}
-        <div className="border-b border-gray-900 pb-5 flex items-center justify-between">
+        <div className="border-b border-eb-yellow/30 pb-5 flex items-center justify-between">
           <div className="space-y-1">
             <h2 className="text-3xl font-extrabold uppercase text-white tracking-wider flex items-center gap-2">
               <ShieldCheck className="w-8 h-8 text-gold" />
@@ -393,7 +388,7 @@ export default function AdminPanel() {
                   <div className="overflow-x-auto">
                     <table className="w-full text-left text-xs border-collapse">
                       <thead>
-                        <tr className="bg-black text-gray-400 font-black uppercase tracking-wider border-b border-gray-900 text-[10px]">
+                        <tr className="bg-black text-gray-400 font-black uppercase tracking-wider border-b border-eb-yellow/30 text-[10px]">
                           <th className="p-4">Tournament</th>
                           <th className="p-4">Squad Name</th>
                           <th className="p-4">TxID</th>
@@ -402,7 +397,7 @@ export default function AdminPanel() {
                           <th className="p-4 text-right">Action</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-950 text-gray-300">
+                      <tbody className="divide-y divide-eb-yellow/30 text-gray-300">
                         {registrations.map((reg) => {
                           const tourney = tournaments.find(t => t.id === reg.tournamentId) || {};
                           return (
@@ -414,7 +409,7 @@ export default function AdminPanel() {
                                 <div className="inline-flex items-center justify-center">
                                   <button
                                     onClick={() => setZoomReceiptUrl(reg.screenshot)}
-                                    className="group relative block w-16 h-10 rounded-sm border border-gray-800 overflow-hidden bg-black focus:outline-none"
+                                    className="group relative block w-16 h-10 rounded-sm border border-eb-yellow/20 overflow-hidden bg-black focus:outline-none"
                                     title="View receipt"
                                   >
                                     <img 
@@ -478,7 +473,7 @@ export default function AdminPanel() {
           {adminTab === 'scores' && (
             <div className="pubg-hud-panel cyber-card p-6 space-y-6 animate-fadeIn">
               
-              <div className="border-b border-gray-900 pb-3">
+              <div className="border-b border-eb-yellow/30 pb-3">
                 <h3 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2">
                   <Award className="w-5 h-5 text-gold" />
                   Scoresheet Entry
@@ -538,7 +533,7 @@ export default function AdminPanel() {
                   <h4 className="text-[10px] font-black text-white uppercase tracking-widest block">Approved Squads Scoring</h4>
                   
                   {registeredTeams.length > 0 ? (
-                    <div className="border border-gray-900 rounded overflow-hidden divide-y divide-gray-950">
+                    <div className="border border-eb-yellow/30 rounded overflow-hidden divide-y divide-eb-yellow/30">
                       
                       {/* Table Header */}
                       <div className="bg-black p-3.5 grid grid-cols-12 gap-3 text-[9px] text-gray-500 font-black uppercase tracking-wider">
@@ -581,7 +576,7 @@ export default function AdminPanel() {
 
                     </div>
                   ) : (
-                    <div className="p-8 rounded border border-gray-900 bg-black/40 text-center text-xs text-gray-500 font-medium">
+                    <div className="p-8 rounded border border-eb-yellow/30 bg-black/40 text-center text-xs text-gray-500 font-medium">
                       No approved teams found for this tournament match. Please verify registrations in Payment Reviews first.
                     </div>
                   )}
@@ -593,7 +588,7 @@ export default function AdminPanel() {
                   disabled={registeredTeams.length === 0}
                   className={`w-full py-3 rounded text-black font-black uppercase text-xs tracking-widest transition-all duration-300 ${
                     registeredTeams.length === 0
-                      ? 'bg-gray-950 text-gray-600 cursor-not-allowed border border-gray-900'
+                      ? 'bg-gray-950 text-gray-600 cursor-not-allowed border border-eb-yellow/30'
                       : 'bg-eb-yellow hover:bg-gold hover:scale-[1.01] hover:shadow-glow-yellow'
                   }`}
                 >
@@ -619,7 +614,7 @@ export default function AdminPanel() {
                 
                 {/* Form to Add/Edit Tournament */}
                 <div className="pubg-hud-panel p-6 space-y-4 h-fit">
-                  <div className="border-b border-gray-900 pb-3 flex justify-between items-center">
+                  <div className="border-b border-eb-yellow/30 pb-3 flex justify-between items-center">
                     <h3 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2">
                       <Award className="w-5 h-5 text-gold" />
                       {editTourneyId ? 'Edit Tournament' : 'Add Tournament'}
@@ -627,7 +622,7 @@ export default function AdminPanel() {
                     {editTourneyId && (
                       <button 
                         onClick={resetTournamentForm}
-                        className="text-[9px] font-black uppercase text-gray-400 hover:text-white flex items-center gap-1 bg-gray-950 px-2 py-1 border border-gray-900 font-mono"
+                        className="text-[9px] font-black uppercase text-gray-400 hover:text-white flex items-center gap-1 bg-gray-950 px-2 py-1 border border-eb-yellow/30 font-mono"
                       >
                         <Undo className="w-3 h-3" /> Cancel
                       </button>
@@ -756,7 +751,7 @@ export default function AdminPanel() {
 
                 {/* Tournaments List */}
                 <div className="lg:col-span-2 pubg-hud-panel overflow-hidden">
-                  <div className="bg-black p-4 border-b border-gray-950 flex items-center justify-between">
+                  <div className="bg-black p-4 border-b border-eb-yellow/30 flex items-center justify-between">
                     <span className="text-[10px] font-black text-gold uppercase tracking-widest flex items-center gap-1.5">
                       <Calendar className="w-4 h-4 text-eb-yellow" />
                       Active Tournaments Audit
@@ -767,7 +762,7 @@ export default function AdminPanel() {
                   <div className="overflow-x-auto">
                     <table className="w-full text-left text-xs border-collapse">
                       <thead>
-                        <tr className="bg-black text-gray-400 font-black uppercase tracking-wider border-b border-gray-900 text-[10px]">
+                        <tr className="bg-black text-gray-400 font-black uppercase tracking-wider border-b border-eb-yellow/30 text-[10px]">
                           <th className="p-4">Tournament Details</th>
                           <th className="p-4 text-center">Fee / Prize</th>
                           <th className="p-4 text-center">Perspective</th>
@@ -775,7 +770,7 @@ export default function AdminPanel() {
                           <th className="p-4 text-right">Actions</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-950 text-gray-300">
+                      <tbody className="divide-y divide-eb-yellow/30 text-gray-300">
                         {tournaments.map((t) => (
                           <tr key={t.id} className="hover:bg-black/40 transition-colors">
                             <td className="p-4">
@@ -788,7 +783,7 @@ export default function AdminPanel() {
                                       ? 'bg-gray-800 text-gray-400 border-gray-700'
                                       : 'bg-harvest/15 text-eb-yellow border-harvest'
                                 }`}>
-                                  {t.status}
+                                   {t.status === 'active' ? 'open' : t.status}
                                 </span>
                                 <span className="text-[9px] text-gray-500 font-mono font-semibold">{t.date}</span>
                               </div>
@@ -805,7 +800,7 @@ export default function AdminPanel() {
                               <div className="flex justify-end gap-2">
                                 <button
                                   onClick={() => handleEditTourneyClick(t)}
-                                  className="p-1.5 rounded-sm bg-gray-950 border border-gray-850 hover:border-eb-yellow text-gray-400 hover:text-eb-yellow transition-colors"
+                                  className="p-1.5 rounded-sm bg-gray-950 border border-eb-yellow/20 hover:border-eb-yellow text-gray-400 hover:text-eb-yellow transition-colors"
                                   title="Edit"
                                 >
                                   <Edit className="w-3.5 h-3.5" />
@@ -816,7 +811,7 @@ export default function AdminPanel() {
                                       deleteTournament(t.id);
                                     }
                                   }}
-                                  className="p-1.5 rounded-sm bg-gray-950 border border-gray-850 hover:border-tan text-gray-400 hover:text-tan transition-colors"
+                                  className="p-1.5 rounded-sm bg-gray-950 border border-eb-yellow/20 hover:border-tan text-gray-400 hover:text-tan transition-colors"
                                   title="Delete"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
@@ -847,7 +842,7 @@ export default function AdminPanel() {
               {editMatchResultId ? (
                 /* Edit Match Scoresheet Block */
                 <div className="pubg-hud-panel cyber-card p-6 space-y-6">
-                  <div className="border-b border-gray-900 pb-3 flex justify-between items-center">
+                  <div className="border-b border-eb-yellow/30 pb-3 flex justify-between items-center">
                     <div>
                       <h3 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2">
                         <Edit className="w-5 h-5 text-eb-yellow" />
@@ -859,7 +854,7 @@ export default function AdminPanel() {
                     </div>
                     <button 
                       onClick={() => setEditMatchResultId(null)}
-                      className="text-[9px] font-black uppercase text-gray-400 hover:text-white flex items-center gap-1 bg-gray-950 px-2.5 py-1 border border-gray-900 font-mono"
+                      className="text-[9px] font-black uppercase text-gray-400 hover:text-white flex items-center gap-1 bg-gray-950 px-2.5 py-1 border border-eb-yellow/30 font-mono"
                     >
                       <Undo className="w-3 h-3" /> Go Back
                     </button>
@@ -867,7 +862,7 @@ export default function AdminPanel() {
 
                   <form onSubmit={handleEditMatchSubmit} className="space-y-6">
                     <div className="space-y-3">
-                      <div className="border border-gray-900 rounded overflow-hidden divide-y divide-gray-950">
+                      <div className="border border-eb-yellow/30 rounded overflow-hidden divide-y divide-eb-yellow/30">
                         {/* Table Header */}
                         <div className="bg-black p-3.5 grid grid-cols-12 gap-3 text-[9px] text-gray-500 font-black uppercase tracking-wider">
                           <div className="col-span-6">Squad Name</div>
@@ -917,7 +912,7 @@ export default function AdminPanel() {
               ) : (
                 /* Scoresheets List */
                 <div className="pubg-hud-panel overflow-hidden">
-                  <div className="bg-black p-4 border-b border-gray-950 flex items-center justify-between">
+                  <div className="bg-black p-4 border-b border-eb-yellow/30 flex items-center justify-between">
                     <span className="text-[10px] font-black text-gold uppercase tracking-widest flex items-center gap-1.5">
                       <ListOrdered className="w-4 h-4 text-eb-yellow" />
                       Recorded Match Scoresheets
@@ -926,7 +921,7 @@ export default function AdminPanel() {
                   </div>
 
                   {matchResults.length > 0 ? (
-                    <div className="divide-y divide-gray-950">
+                    <div className="divide-y divide-eb-yellow/30">
                       {matchResults.map((match) => {
                         const tourney = tournaments.find(t => t.id === match.tournamentId) || {};
                         return (
@@ -936,10 +931,10 @@ export default function AdminPanel() {
                                 {tourney.title || 'Deleted Tournament'}
                               </div>
                               <div className="flex flex-wrap gap-2 items-center">
-                                <span className="px-2 py-0.5 bg-black border border-gray-850 rounded-sm text-[9px] text-gray-400 font-black uppercase tracking-wider">
+                                <span className="px-2 py-0.5 bg-black border border-eb-yellow/20 rounded-sm text-[9px] text-gray-400 font-black uppercase tracking-wider">
                                   Match #{match.matchIndex}
                                 </span>
-                                <span className="px-2 py-0.5 bg-black border border-gray-850 rounded-sm text-[9px] text-eb-yellow font-black uppercase tracking-wider">
+                                <span className="px-2 py-0.5 bg-black border border-eb-yellow/20 rounded-sm text-[9px] text-eb-yellow font-black uppercase tracking-wider">
                                   Map: {match.mapName}
                                 </span>
                                 <span className="text-[9px] text-gray-500 font-semibold font-mono">
@@ -949,7 +944,7 @@ export default function AdminPanel() {
                               {/* Roster Points summary */}
                               <div className="text-[10px] text-gray-400 flex flex-wrap gap-x-4 gap-y-1 pt-1.5 font-medium">
                                 {match.scores.map(s => (
-                                  <span key={s.teamId} className="border-r border-gray-800 pr-4 last:border-0 last:pr-0">
+                                  <span key={s.teamId} className="border-r border-eb-yellow/20 pr-4 last:border-0 last:pr-0">
                                     <span className="font-bold text-white">{s.teamName}</span>: {s.placementPoints + s.killPoints} pts ({s.placementPoints}P, {s.killPoints}K)
                                   </span>
                                 ))}
@@ -959,7 +954,7 @@ export default function AdminPanel() {
                             <div className="flex gap-2 items-center self-end md:self-auto">
                               <button
                                 onClick={() => handleEditMatchClick(match)}
-                                className="px-3 py-1.5 rounded-sm bg-gray-950 border border-gray-850 hover:border-eb-yellow text-gray-400 hover:text-eb-yellow font-black uppercase text-[9px] tracking-widest flex items-center gap-1 transition-colors"
+                                className="px-3 py-1.5 rounded-sm bg-gray-950 border border-eb-yellow/20 hover:border-eb-yellow text-gray-400 hover:text-eb-yellow font-black uppercase text-[9px] tracking-widest flex items-center gap-1 transition-colors"
                               >
                                 <Edit className="w-3.5 h-3.5" /> Edit scores
                               </button>
@@ -971,7 +966,7 @@ export default function AdminPanel() {
                                     setTimeout(() => setMatchSuccess(''), 3000);
                                   }
                                 }}
-                                className="px-3 py-1.5 rounded-sm bg-gray-950 border border-gray-850 hover:border-tan text-gray-400 hover:text-tan font-black uppercase text-[9px] tracking-widest flex items-center gap-1 transition-colors"
+                                className="px-3 py-1.5 rounded-sm bg-gray-950 border border-eb-yellow/20 hover:border-tan text-gray-400 hover:text-tan font-black uppercase text-[9px] tracking-widest flex items-center gap-1 transition-colors"
                               >
                                 <Trash2 className="w-3.5 h-3.5" /> Delete
                               </button>
@@ -1003,7 +998,7 @@ export default function AdminPanel() {
               {/* Roster Editing Mode (Modal or Form panel) */}
               {editingTeamId && (
                 <div className="pubg-hud-panel p-6 space-y-4">
-                  <div className="border-b border-gray-900 pb-3 flex justify-between items-center">
+                  <div className="border-b border-eb-yellow/30 pb-3 flex justify-between items-center">
                     <div>
                       <h3 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2">
                         <Users className="w-5 h-5 text-eb-yellow" />
@@ -1013,7 +1008,7 @@ export default function AdminPanel() {
                     </div>
                     <button 
                       onClick={() => { setEditingTeamId(null); setRosterError(''); }}
-                      className="text-[9px] font-black uppercase text-gray-400 hover:text-white flex items-center gap-1 bg-gray-950 px-2 py-1 border border-gray-900 font-mono"
+                      className="text-[9px] font-black uppercase text-gray-400 hover:text-white flex items-center gap-1 bg-gray-950 px-2 py-1 border border-eb-yellow/30 font-mono"
                     >
                       <Undo className="w-3 h-3" /> Cancel
                     </button>
@@ -1061,7 +1056,7 @@ export default function AdminPanel() {
 
               {/* Squads Listing */}
               <div className="pubg-hud-panel overflow-hidden">
-                <div className="bg-black p-4 border-b border-gray-950 flex items-center justify-between">
+                <div className="bg-black p-4 border-b border-eb-yellow/30 flex items-center justify-between">
                   <span className="text-[10px] font-black text-gold uppercase tracking-widest flex items-center gap-1.5">
                     <Users className="w-4 h-4 text-eb-yellow" />
                     Squad Directory
@@ -1069,7 +1064,7 @@ export default function AdminPanel() {
                   <span className="text-[9px] text-gray-400 font-bold uppercase">{teams.length} Roster Profiles</span>
                 </div>
 
-                <div className="divide-y divide-gray-950">
+                <div className="divide-y divide-eb-yellow/30">
                   {teams.map((team) => {
                     const teamRegistrations = registrations.filter(r => r.teamId === team.id);
                     
@@ -1081,7 +1076,7 @@ export default function AdminPanel() {
                           <div className="space-y-1.5">
                             <div className="flex items-center gap-2">
                               <h4 className="font-black text-white uppercase text-sm tracking-wide">{team.name}</h4>
-                              <span className="bg-black border border-gray-850 px-2 py-0.5 rounded-sm text-[8px] text-gold font-mono font-bold">
+                              <span className="bg-black border border-eb-yellow/20 px-2 py-0.5 rounded-sm text-[8px] text-gold font-mono font-bold">
                                 CODE: {team.inviteCode}
                               </span>
                             </div>
@@ -1090,7 +1085,7 @@ export default function AdminPanel() {
                             </p>
                             <div className="flex flex-wrap gap-1.5">
                               {team.members.map((m, idx) => (
-                                <span key={idx} className="px-2 py-0.5 bg-black/60 border border-gray-900 text-gray-300 font-mono text-[9px]">
+                                <span key={idx} className="px-2 py-0.5 bg-black/60 border border-eb-yellow/30 text-gray-300 font-mono text-[9px]">
                                   {m}
                                 </span>
                               ))}
@@ -1101,7 +1096,7 @@ export default function AdminPanel() {
                           <div className="flex gap-2 self-end md:self-auto">
                             <button
                               onClick={() => handleEditTeamClick(team)}
-                              className="px-2.5 py-1.5 rounded-sm bg-gray-950 border border-gray-850 hover:border-eb-yellow text-gray-400 hover:text-eb-yellow font-black uppercase text-[9px] tracking-wider flex items-center gap-1 transition-colors font-semibold"
+                              className="px-2.5 py-1.5 rounded-sm bg-gray-950 border border-eb-yellow/20 hover:border-eb-yellow text-gray-400 hover:text-eb-yellow font-black uppercase text-[9px] tracking-wider flex items-center gap-1 transition-colors font-semibold"
                             >
                               <Edit className="w-3.5 h-3.5" /> Edit Roster
                             </button>
@@ -1113,7 +1108,7 @@ export default function AdminPanel() {
                                   setTimeout(() => setSquadSuccess(''), 3000);
                                 }
                               }}
-                              className="px-2.5 py-1.5 rounded-sm bg-gray-950 border border-gray-850 hover:border-tan text-gray-400 hover:text-tan font-black uppercase text-[9px] tracking-wider flex items-center gap-1 transition-colors font-semibold"
+                              className="px-2.5 py-1.5 rounded-sm bg-gray-950 border border-eb-yellow/20 hover:border-tan text-gray-400 hover:text-tan font-black uppercase text-[9px] tracking-wider flex items-center gap-1 transition-colors font-semibold"
                             >
                               <Trash2 className="w-3.5 h-3.5" /> Ban Squad
                             </button>
@@ -1122,10 +1117,10 @@ export default function AdminPanel() {
 
                         {/* Tournament registration credentials management */}
                         {teamRegistrations.length > 0 && (
-                          <div className="bg-black/40 border border-gray-900/60 p-3 rounded-sm space-y-2.5">
+                          <div className="bg-black/40 border border-eb-yellow/30/60 p-3 rounded-sm space-y-2.5">
                             <h5 className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Tournament Credentials Control</h5>
                             
-                            <div className="divide-y divide-gray-950 space-y-2">
+                            <div className="divide-y divide-eb-yellow/30 space-y-2">
                               {teamRegistrations.map((reg) => {
                                 const tourney = tournaments.find(t => t.id === reg.tournamentId) || {};
                                 const isEditingRoom = editingRegRoomId === reg.id;
@@ -1177,7 +1172,7 @@ export default function AdminPanel() {
                                         </button>
                                         <button
                                           onClick={() => setEditingRegRoomId(null)}
-                                          className="p-1 px-2 bg-gray-900 border border-gray-800 text-gray-400 font-bold text-[9px] rounded-sm transition-colors"
+                                          className="p-1 px-2 bg-gray-900 border border-eb-yellow/20 text-gray-400 font-bold text-[9px] rounded-sm transition-colors"
                                         >
                                           ✕
                                         </button>
@@ -1186,7 +1181,7 @@ export default function AdminPanel() {
                                       reg.status === 'Approved' && (
                                         <button
                                           onClick={() => handleEditRoomClick(reg)}
-                                          className="px-2 py-0.5 bg-gray-950 border border-gray-850 hover:border-eb-yellow text-[9px] text-gray-400 hover:text-eb-yellow font-black uppercase tracking-wider flex items-center gap-1 rounded-sm transition-colors font-semibold"
+                                          className="px-2 py-0.5 bg-gray-950 border border-eb-yellow/20 hover:border-eb-yellow text-[9px] text-gray-400 hover:text-eb-yellow font-black uppercase tracking-wider flex items-center gap-1 rounded-sm transition-colors font-semibold"
                                         >
                                           <Key className="w-3 h-3" /> Edit Lobby Key
                                         </button>
@@ -1221,7 +1216,7 @@ export default function AdminPanel() {
             <div className="absolute bottom-0 left-0 w-3 h-3 border-b border-l border-eb-yellow"></div>
             <div className="absolute bottom-0 right-0 w-3 h-3 border-b border-r border-eb-yellow"></div>
 
-            <div className="bg-black/50 p-4 border-b border-gray-950 flex justify-between items-center">
+            <div className="bg-black/50 p-4 border-b border-eb-yellow/30 flex justify-between items-center">
               <span className="text-[10px] font-black text-gold uppercase tracking-widest flex items-center gap-1.5">
                 <FileImage className="w-4 h-4" />
                 Receipt Verification Slip
@@ -1237,7 +1232,7 @@ export default function AdminPanel() {
               <img 
                 src={zoomReceiptUrl} 
                 alt="Receipt Full Preview" 
-                className="max-h-[60vh] object-contain rounded border border-gray-900 shadow-2xl"
+                className="max-h-[60vh] object-contain rounded border border-eb-yellow/30 shadow-2xl"
               />
             </div>
           </div>

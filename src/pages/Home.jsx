@@ -44,6 +44,13 @@ export default function Home() {
     }
   };
 
+  const isRegistrationClosed = (event) => {
+    if (!event || !event.matchStartTime) return false;
+    const start = new Date(event.matchStartTime);
+    const deadline = new Date(start.getTime() - 24 * 60 * 60 * 1000);
+    return new Date() > deadline;
+  };
+
   const handleRegisterClick = (eventId) => {
     if (user) {
       setSelectedEventId(eventId || null);
@@ -106,7 +113,7 @@ export default function Home() {
   };
 
   const getStatusTag = (status) => {
-    if (status === 'active') return 'ACTIVE';
+    if (status === 'active') return 'OPEN';
     if (status === 'upcoming') return 'UPCOMING';
     if (status === 'live') return 'LIVE';
     if (status === 'ended') return 'ENDED';
@@ -281,16 +288,19 @@ export default function Home() {
                   <div
                     key={evt._id}
                     onClick={() => setDetailsModalEvent(evt)}
-                    className={`min-w-[320px] max-w-[320px] shrink-0 p-5 hover:scale-[1.02] transition-transform duration-300 cursor-pointer rounded-none relative border-2 before:content-none ${isActive
+                    className={`min-w-[320px] max-w-[320px] shrink-0 p-5 hover:scale-[1.02] transition-transform duration-300 cursor-pointer rounded-none relative border-2 ${isActive
                         ? 'bg-eb-yellow text-black border-eb-yellow shadow-glow-yellow-sm'
                         : 'pubg-hud-panel border-gray-800 bg-[#12120e]/40 text-gray-200'
                       }`}
                   >
-                    {/* HUD Bracket Corners positioned relative to outer border-2 boundary */}
-                    <div className={`absolute w-3 h-3 border-t-2 border-l-2 ${isActive ? 'border-black' : 'border-eb-yellow'}`} style={{ top: '-2px', left: '-2px' }}></div>
-                    <div className={`absolute w-3 h-3 border-t-2 border-r-2 ${isActive ? 'border-black' : 'border-eb-yellow'}`} style={{ top: '-2px', right: '-2px' }}></div>
-                    <div className={`absolute w-3 h-3 border-b-2 border-l-2 ${isActive ? 'border-black' : 'border-eb-yellow'}`} style={{ bottom: '-2px', left: '-2px' }}></div>
-                    <div className={`absolute w-3 h-3 border-b-2 border-r-2 ${isActive ? 'border-black' : 'border-eb-yellow'}`} style={{ bottom: '-2px', right: '-2px' }}></div>
+                    {isActive && (
+                      <>
+                        <div className="absolute w-3 h-3 border-t-2 border-l-2 border-black" style={{ top: '-2px', left: '-2px' }}></div>
+                        <div className="absolute w-3 h-3 border-t-2 border-r-2 border-black" style={{ top: '-2px', right: '-2px' }}></div>
+                        <div className="absolute w-3 h-3 border-b-2 border-l-2 border-black" style={{ bottom: '-2px', left: '-2px' }}></div>
+                        <div className="absolute w-3 h-3 border-b-2 border-r-2 border-black" style={{ bottom: '-2px', right: '-2px' }}></div>
+                      </>
+                    )}
 
                     {/* Content wrapper with space-y-4 to protect brackets from sibling margin-top rules */}
                     <div className="space-y-4">
@@ -387,16 +397,19 @@ export default function Home() {
                   <div
                     key={evt._id}
                     onClick={() => setDetailsModalEvent(evt)}
-                    className={`min-w-[320px] max-w-[320px] shrink-0 p-5 hover:scale-[1.02] transition-transform duration-300 cursor-pointer rounded-none relative border-2 before:content-none ${isActive
+                    className={`min-w-[320px] max-w-[320px] shrink-0 p-5 hover:scale-[1.02] transition-transform duration-300 cursor-pointer rounded-none relative border-2 ${isActive
                         ? 'bg-eb-yellow text-black border-eb-yellow shadow-glow-yellow-sm'
                         : 'pubg-hud-panel border-gray-800 bg-[#12120e]/40 text-gray-200'
                       }`}
                   >
-                    {/* HUD Bracket Corners positioned relative to outer border-2 boundary */}
-                    <div className={`absolute w-3 h-3 border-t-2 border-l-2 ${isActive ? 'border-black' : 'border-eb-yellow'}`} style={{ top: '-2px', left: '-2px' }}></div>
-                    <div className={`absolute w-3 h-3 border-t-2 border-r-2 ${isActive ? 'border-black' : 'border-eb-yellow'}`} style={{ top: '-2px', right: '-2px' }}></div>
-                    <div className={`absolute w-3 h-3 border-b-2 border-l-2 ${isActive ? 'border-black' : 'border-eb-yellow'}`} style={{ bottom: '-2px', left: '-2px' }}></div>
-                    <div className={`absolute w-3 h-3 border-b-2 border-r-2 ${isActive ? 'border-black' : 'border-eb-yellow'}`} style={{ bottom: '-2px', right: '-2px' }}></div>
+                    {isActive && (
+                      <>
+                        <div className="absolute w-3 h-3 border-t-2 border-l-2 border-black" style={{ top: '-2px', left: '-2px' }}></div>
+                        <div className="absolute w-3 h-3 border-t-2 border-r-2 border-black" style={{ top: '-2px', right: '-2px' }}></div>
+                        <div className="absolute w-3 h-3 border-b-2 border-l-2 border-black" style={{ bottom: '-2px', left: '-2px' }}></div>
+                        <div className="absolute w-3 h-3 border-b-2 border-r-2 border-black" style={{ bottom: '-2px', right: '-2px' }}></div>
+                      </>
+                    )}
 
                     {/* Content wrapper with space-y-4 to protect brackets from sibling margin-top rules */}
                     <div className="space-y-4">
@@ -491,13 +504,8 @@ export default function Home() {
                 <div
                   key={evt._id}
                   onClick={() => handleOpenReport(evt._id)}
-                  className="pubg-hud-panel p-5 space-y-4 min-w-[320px] max-w-[320px] shrink-0 border-2 border-gray-800 bg-[#12120e]/40 hover:scale-[1.02] transition-transform duration-300 cursor-pointer text-gray-250 before:content-none"
+                  className="pubg-hud-panel p-5 space-y-4 min-w-[320px] max-w-[320px] shrink-0 border-2 border-gray-800 bg-[#12120e]/40 hover:scale-[1.02] transition-transform duration-300 cursor-pointer text-gray-250"
                 >
-                  {/* HUD Bracket Corners positioned relative to outer border-2 boundary */}
-                  <div className="absolute w-3 h-3 border-t-2 border-l-2 border-eb-yellow" style={{ top: '-2px', left: '-2px' }}></div>
-                  <div className="absolute w-3 h-3 border-t-2 border-r-2 border-eb-yellow" style={{ top: '-2px', right: '-2px' }}></div>
-                  <div className="absolute w-3 h-3 border-b-2 border-l-2 border-eb-yellow" style={{ bottom: '-2px', left: '-2px' }}></div>
-                  <div className="absolute w-3 h-3 border-b-2 border-r-2 border-eb-yellow" style={{ bottom: '-2px', right: '-2px' }}></div>
 
                   {/* Content wrapper with space-y-4 to protect brackets from sibling margin-top rules */}
                   <div className="space-y-4">
@@ -538,12 +546,7 @@ export default function Home() {
       {/* 3. Tournament Report modal */}
       {reportModalOpen && (
         <div className="fixed inset-0 bg-black/85 flex justify-center items-start overflow-y-auto z-[100] p-4 backdrop-blur-sm">
-          <div className="pubg-hud-panel p-6 max-w-2xl w-full bg-[#090907] relative border-2 border-eb-yellow before:content-none">
-            {/* HUD Corner Brackets positioned relative to outer border-2 boundary */}
-            <div className="absolute w-4 h-4 border-t-2 border-l-2 border-eb-yellow" style={{ top: '-2px', left: '-2px' }}></div>
-            <div className="absolute w-4 h-4 border-t-2 border-r-2 border-eb-yellow" style={{ top: '-2px', right: '-2px' }}></div>
-            <div className="absolute w-4 h-4 border-b-2 border-l-2 border-eb-yellow" style={{ bottom: '-2px', left: '-2px' }}></div>
-            <div className="absolute w-4 h-4 border-b-2 border-r-2 border-eb-yellow" style={{ bottom: '-2px', right: '-2px' }}></div>
+          <div className="pubg-hud-panel p-6 max-w-2xl w-full bg-[#090907] relative border-2 border-eb-yellow">
 
             {/* Content wrapper with space-y-6 to protect brackets from sibling margin-top rules */}
             <div className="space-y-6">
@@ -671,12 +674,7 @@ export default function Home() {
       {/* 4. Clicked Tournament Detail / Info Modal */}
       {detailsModalEvent && (
         <div className="fixed inset-0 bg-black/85 flex justify-center items-center overflow-y-auto z-[100] p-4 backdrop-blur-sm animate-fadeIn">
-          <div className="pubg-hud-panel p-6 max-w-lg w-full bg-[#090907] relative border-2 border-eb-yellow before:content-none">
-            {/* HUD Corner Brackets positioned relative to outer border-2 boundary */}
-            <div className="absolute w-4 h-4 border-t-2 border-l-2 border-eb-yellow" style={{ top: '-2px', left: '-2px' }}></div>
-            <div className="absolute w-4 h-4 border-t-2 border-r-2 border-eb-yellow" style={{ top: '-2px', right: '-2px' }}></div>
-            <div className="absolute w-4 h-4 border-b-2 border-l-2 border-eb-yellow" style={{ bottom: '-2px', left: '-2px' }}></div>
-            <div className="absolute w-4 h-4 border-b-2 border-r-2 border-eb-yellow" style={{ bottom: '-2px', right: '-2px' }}></div>
+          <div className="pubg-hud-panel p-6 max-w-lg w-full bg-[#090907] relative border-2 border-eb-yellow">
 
             {/* Content wrapper with space-y-5 to protect brackets from sibling margin-top rules */}
             <div className="space-y-5">
@@ -704,8 +702,11 @@ export default function Home() {
                 <div className="grid grid-cols-2 gap-4 bg-[#12120e]/60 border border-eb-yellow/30 p-4 rounded text-xs font-mono">
                   <div>Format: <span className="text-white font-bold">{detailsModalEvent.type || 'Squad'}</span></div>
                   <div>Map: <span className="text-white font-bold">{detailsModalEvent.map || 'Erangel'}</span></div>
-                  <div>Solo Fee: <span className="text-white font-bold">PKR {detailsModalEvent.soloEntryFee?.toLocaleString()}</span></div>
-                  <div>Team Fee: <span className="text-white font-bold">PKR {detailsModalEvent.teamEntryFee?.toLocaleString()}</span></div>
+                  {detailsModalEvent.type === 'Solo' ? (
+                    <div>Solo Fee: <span className="text-white font-bold">PKR {detailsModalEvent.soloEntryFee?.toLocaleString()}</span></div>
+                  ) : (
+                    <div>Team Fee: <span className="text-white font-bold">PKR {detailsModalEvent.teamEntryFee?.toLocaleString()}</span></div>
+                  )}
                   <div className="col-span-2 border-t border-eb-yellow/30 pt-2">
                     Duration: <span className="text-white font-bold">{detailsModalEvent.numberOfDays || 1} Day(s)</span>
                   </div>
@@ -738,15 +739,20 @@ export default function Home() {
                   >
                     Close
                   </button>
-                  <button
+                   <button
+                    disabled={isRegistrationClosed(detailsModalEvent)}
                     onClick={() => {
                       const evtId = detailsModalEvent?._id;
                       setDetailsModalEvent(null);
                       handleRegisterClick(evtId);
                     }}
-                    className="py-2.5 bg-eb-yellow text-black font-black uppercase text-xs tracking-wider rounded transition-all duration-300 hover:scale-[1.02]"
+                    className={`py-2.5 font-black uppercase text-xs tracking-wider rounded transition-all duration-300 hover:scale-[1.02] ${
+                      isRegistrationClosed(detailsModalEvent)
+                        ? 'bg-gray-800 text-gray-500 cursor-not-allowed'
+                        : 'bg-eb-yellow text-black'
+                    }`}
                   >
-                    Register Now
+                    {isRegistrationClosed(detailsModalEvent) ? 'Registration Closed' : 'Register Now'}
                   </button>
                 </div>
               </div>

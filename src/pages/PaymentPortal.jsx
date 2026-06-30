@@ -149,7 +149,7 @@ export default function PaymentPortal() {
               </p>
             </div>
 
-            <div className="bg-black/60 rounded border border-gray-900 p-4 space-y-2 text-xs text-left max-w-md mx-auto">
+            <div className="bg-black/60 rounded border border-eb-yellow/30 p-4 space-y-2 text-xs text-left max-w-md mx-auto">
               <div className="flex justify-between text-gray-500 font-bold uppercase tracking-wider text-[10px]">
                 <span>Transaction ID:</span>
                 <span className="font-bold text-white font-mono">{txId}</span>
@@ -242,13 +242,13 @@ export default function PaymentPortal() {
             {/* Right Column: Upload Receipt form */}
             <div className="pubg-hud-panel p-6 space-y-5">
               
-              <div className="border-b border-gray-900 pb-3">
+              <div className="border-b border-eb-yellow/30 pb-3">
                 <h3 className="text-sm font-black text-white uppercase tracking-widest">Upload Receipt slip</h3>
                 <p className="text-gray-500 text-[10px] font-semibold mt-0.5">Submit checkout verification fields.</p>
               </div>
 
               {/* Summary details */}
-              <div className="p-3.5 bg-black rounded border border-gray-950 flex items-center justify-between text-xs">
+              <div className="p-3.5 bg-black rounded border border-eb-yellow/30 flex items-center justify-between text-xs">
                 <div>
                   <span className="text-[9px] text-gray-500 uppercase font-black tracking-wider">Squad Name</span>
                   <p className="font-bold text-white">{team.name}</p>
@@ -271,7 +271,7 @@ export default function PaymentPortal() {
                     className={`border-2 border-dashed rounded p-6 flex flex-col items-center justify-center cursor-pointer transition-all duration-300 relative overflow-hidden ${
                       imagePreview 
                         ? 'border-eb-yellow/45 bg-eb-yellow/[0.02]' 
-                        : 'border-gray-800 hover:border-orig-yellow/30 bg-black/40'
+                        : 'border-eb-yellow/20 hover:border-orig-yellow/30 bg-black/40'
                     }`}
                   >
                     <input 
@@ -288,7 +288,7 @@ export default function PaymentPortal() {
                           <img 
                             src={imagePreview} 
                             alt="Receipt Preview" 
-                            className="max-h-36 mx-auto rounded border border-gray-900 shadow-2xl object-contain"
+                            className="max-h-36 mx-auto rounded border border-eb-yellow/30 shadow-2xl object-contain"
                           />
                           <p className="text-[10px] text-eb-yellow font-black uppercase tracking-wider flex items-center justify-center gap-1 animate-pulse">
                             <FileImage className="w-4 h-4" />
@@ -332,7 +332,7 @@ export default function PaymentPortal() {
                     id="checkbox-verify"
                     checked={verificationChecked}
                     onChange={(e) => setVerificationChecked(e.target.checked)}
-                    className="mt-0.5 accent-eb-yellow border-gray-800 rounded bg-black cursor-pointer"
+                    className="mt-0.5 accent-eb-yellow border-eb-yellow/20 rounded bg-black cursor-pointer"
                   />
                   <label htmlFor="checkbox-verify" className="text-[10px] text-gray-500 leading-snug cursor-pointer select-none font-semibold">
                     I confirm that this file is an authentic receipt of <span className="font-bold text-white">PKR {totalAmount.toLocaleString()}</span>. I understand submitting fake documents results in disqualification.
@@ -345,7 +345,7 @@ export default function PaymentPortal() {
                   disabled={submitting}
                   className={`w-full py-3 text-black font-black uppercase text-xs tracking-widest transition-all duration-300 ${
                     submitting 
-                      ? 'bg-gray-900 text-gray-600 cursor-wait border border-gray-850' 
+                      ? 'bg-gray-900 text-gray-600 cursor-wait border border-eb-yellow/20' 
                       : 'bg-eb-yellow hover:bg-gold hover:scale-[1.01] hover:shadow-glow-yellow'
                   }`}
                 >

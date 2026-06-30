@@ -18,12 +18,22 @@ export default function Register() {
   const [success, setSuccess] = useState(false);
   const [successReg, setSuccessReg] = useState(null);
 
-  if (!activeEvent) {
+  const isSoloTournament = activeEvent?.type === 'Solo';
+  const limit = isSoloTournament ? 100 : 96;
+  const isFull = activeEvent && activeEvent.registeredPlayersCount >= limit;
+
+  if (!activeEvent || isFull) {
     return (
       <div className="min-h-screen bg-black flex flex-col items-center justify-center p-8 text-center">
         <AlertTriangle className="w-16 h-16 text-eb-yellow mb-4 animate-bounce" />
-        <h2 className="text-2xl font-bold uppercase text-white">Registration Closed</h2>
-        <p className="text-gray-400 text-sm mt-2">No active tournament is currently open for registration.</p>
+        <h2 className="text-2xl font-bold uppercase text-white">
+          {!activeEvent ? 'Registration Closed' : 'Registration Full'}
+        </h2>
+        <p className="text-gray-400 text-sm mt-2">
+          {!activeEvent 
+            ? 'No active tournament is currently open for registration.' 
+            : `All slots for "${activeEvent.title}" have been filled (${activeEvent.registeredPlayersCount}/${limit} players registered).`}
+        </p>
         <Link to="/" className="mt-6 px-6 py-2.5 rounded bg-eb-yellow text-black font-black uppercase text-xs tracking-wider transition-all duration-300 hover:scale-[1.03]">
           Back to Homepage
         </Link>
@@ -188,7 +198,7 @@ export default function Register() {
               </p>
             </div>
 
-            <div className="bg-black/60 rounded border border-gray-900 p-4 space-y-2.5 text-xs text-left max-w-md mx-auto">
+            <div className="bg-black/60 rounded border border-eb-yellow/30 p-4 space-y-2.5 text-xs text-left max-w-md mx-auto">
               <div className="flex justify-between text-gray-500 font-bold uppercase tracking-wider text-[10px]">
                 <span>Tracking Character ID:</span>
                 <span className="font-bold text-white font-mono">{successReg?.trackingUid}</span>
@@ -219,7 +229,7 @@ export default function Register() {
             
             {/* Left Column: Form Details */}
             <div className="lg:col-span-7 pubg-hud-panel p-6 space-y-5">
-              <div className="border-b border-gray-900 pb-3">
+              <div className="border-b border-eb-yellow/30 pb-3">
                 <h3 className="text-sm font-black text-white uppercase tracking-widest">
                   Squad Combat Registration
                 </h3>
@@ -265,7 +275,7 @@ export default function Register() {
                     <button
                       type="button"
                       onClick={addUidField}
-                      className="px-2.5 py-1 bg-black border border-gray-800 hover:border-eb-yellow text-[9px] font-bold uppercase tracking-wider text-gray-400 hover:text-white flex items-center gap-1"
+                      className="px-2.5 py-1 bg-black border border-eb-yellow/20 hover:border-eb-yellow text-[9px] font-bold uppercase tracking-wider text-gray-400 hover:text-white flex items-center gap-1"
                       disabled={submitting}
                     >
                       <Plus className="w-3 h-3" /> Add Slot
@@ -291,7 +301,7 @@ export default function Register() {
                             <button
                               type="button"
                               onClick={() => removeUidField(index)}
-                              className="p-2 bg-black border border-gray-900 text-gray-500 hover:text-tan hover:border-tan"
+                              className="p-2 bg-black border border-eb-yellow/30 text-gray-500 hover:text-tan hover:border-tan"
                               disabled={submitting}
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -325,7 +335,7 @@ export default function Register() {
                     className={`border-2 border-dashed rounded p-6 flex flex-col items-center justify-center cursor-pointer transition-all duration-300 relative overflow-hidden ${
                       screenshotPreview 
                         ? 'border-eb-yellow/45 bg-eb-yellow/[0.02]' 
-                        : 'border-gray-800 hover:border-orig-yellow/30 bg-black/40'
+                        : 'border-eb-yellow/20 hover:border-orig-yellow/30 bg-black/40'
                     }`}
                   >
                     <input 
@@ -343,7 +353,7 @@ export default function Register() {
                           <img 
                             src={screenshotPreview} 
                             alt="Receipt Preview" 
-                            className="max-h-36 mx-auto rounded border border-gray-900 shadow-2xl object-contain"
+                            className="max-h-36 mx-auto rounded border border-eb-yellow/30 shadow-2xl object-contain"
                           />
                           <p className="text-[10px] text-eb-yellow font-black uppercase tracking-wider flex items-center justify-center gap-1 animate-pulse">
                             <FileImage className="w-4 h-4" />
@@ -368,7 +378,7 @@ export default function Register() {
                   disabled={submitting}
                   className={`w-full py-3 text-black font-black uppercase text-xs tracking-widest transition-all duration-300 ${
                     submitting 
-                      ? 'bg-gray-950 text-gray-600 cursor-wait border border-gray-900' 
+                      ? 'bg-gray-950 text-gray-600 cursor-wait border border-eb-yellow/30' 
                       : 'bg-eb-yellow hover:scale-[1.01]'
                   }`}
                 >
@@ -383,13 +393,13 @@ export default function Register() {
               
               {/* Payment Details info panel */}
               <div className="pubg-hud-panel p-6 space-y-5">
-                <h3 className="text-xs font-black text-white uppercase tracking-widest border-b border-gray-900 pb-3">
+                <h3 className="text-xs font-black text-white uppercase tracking-widest border-b border-eb-yellow/30 pb-3">
                   Transfer Channels
                 </h3>
                 
                 {/* Local Payment Wallet details */}
                 <div className="space-y-4">
-                  <div className="p-4 bg-black/60 border border-gray-950 rounded relative overflow-hidden">
+                  <div className="p-4 bg-black/60 border border-eb-yellow/30 rounded relative overflow-hidden">
                     <div className="absolute top-0 right-0 bg-[#ea580c] text-white px-2 py-0.5 text-[8px] font-black uppercase tracking-widest">
                       EasyPaisa
                     </div>
@@ -402,7 +412,7 @@ export default function Register() {
                     </div>
                   </div>
 
-                  <div className="p-4 bg-black/60 border border-gray-950 rounded relative overflow-hidden">
+                  <div className="p-4 bg-black/60 border border-eb-yellow/30 rounded relative overflow-hidden">
                     <div className="absolute top-0 right-0 bg-tan text-white px-2 py-0.5 text-[8px] font-black uppercase tracking-widest">
                       JazzCash
                     </div>
@@ -417,7 +427,7 @@ export default function Register() {
                 </div>
 
                 {/* Entry fee calculations */}
-                <div className="border-t border-gray-900 pt-4 space-y-2.5 text-xs text-gray-400 font-semibold">
+                <div className="border-t border-eb-yellow/30 pt-4 space-y-2.5 text-xs text-gray-400 font-semibold">
                   <div className="flex justify-between">
                     <span>{isSolo ? 'Solo Registration Fee' : `Team Registration Fee (${uids.filter(Boolean).length} Players)`}</span>
                     <span className="font-bold text-white">
@@ -428,7 +438,7 @@ export default function Register() {
                     <span>Platform Transaction Fee</span>
                     <span className="font-bold text-white">PKR {platformFee.toLocaleString()}</span>
                   </div>
-                  <div className="flex justify-between border-t border-gray-900 pt-3 text-xs text-gold font-black uppercase tracking-wider">
+                  <div className="flex justify-between border-t border-eb-yellow/30 pt-3 text-xs text-gold font-black uppercase tracking-wider">
                     <span>Total Amount Due</span>
                     <span className="text-eb-yellow font-black text-sm">PKR {totalAmount.toLocaleString()}</span>
                   </div>

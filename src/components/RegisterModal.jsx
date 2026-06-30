@@ -21,7 +21,6 @@ export default function RegisterModal({ isOpen, onClose, eventId }) {
   ]);
 
   // Shared fields
-  const [contactPhone, setContactPhone] = useState('');
   const [whatsappNumber, setWhatsappNumber] = useState('');
   const [transactionId, setTransactionId] = useState('');
   const [screenshotFile, setScreenshotFile] = useState(null);
@@ -37,7 +36,7 @@ export default function RegisterModal({ isOpen, onClose, eventId }) {
   useEffect(() => {
     if (isOpen && user) {
       if (!soloCharacterId) setSoloCharacterId(user.uid);
-      if (!contactPhone) setContactPhone(user.phoneNumber);
+      if (!whatsappNumber) setWhatsappNumber(user.phoneNumber);
       if (teamPlayers.length === 4 && !teamPlayers[0].characterId) {
         setTeamPlayers([
           { characterId: user.uid, inGameName: teamPlayers[0].inGameName },
@@ -128,12 +127,14 @@ export default function RegisterModal({ isOpen, onClose, eventId }) {
   // Form submit
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const deadlineTime = new Date(new Date(activeEvent.matchStartTime).getTime() - 24 * 60 * 60 * 1000);
+    if (new Date() > deadlineTime) {
+      setErrors({ submit: 'Registrations are closed. Registration stops 24 hours before the match starts.' });
+      return;
+    }
     const tempErrors = {};
 
-    // Validate phone numbers
-    if (!contactPhone.trim()) {
-      tempErrors.contactPhone = 'Contact phone number is required';
-    }
+    // Validate WhatsApp number
     if (!whatsappNumber.trim()) {
       tempErrors.whatsappNumber = 'WhatsApp number is required';
     }
@@ -145,9 +146,13 @@ export default function RegisterModal({ isOpen, onClose, eventId }) {
     let characterIds = [];
     let inGameNames = [];
 
+    const numericRegex = /^\d+$/;
+
     if (activeTab === 'solo') {
       if (!soloCharacterId.trim()) {
         tempErrors.soloCharacterId = 'Character ID is required';
+      } else if (!numericRegex.test(soloCharacterId.trim())) {
+        tempErrors.soloCharacterId = 'Character UID must contain numbers only';
       }
       if (!soloInGameName.trim()) {
         tempErrors.soloInGameName = 'In-game Name is required';
@@ -158,6 +163,8 @@ export default function RegisterModal({ isOpen, onClose, eventId }) {
       teamPlayers.forEach((player, index) => {
         if (!player.characterId.trim()) {
           tempErrors[`player_${index}_characterId`] = `Character ID for Player ${index + 1} is required`;
+        } else if (!numericRegex.test(player.characterId.trim())) {
+          tempErrors[`player_${index}_characterId`] = `Character ID for Player ${index + 1} must contain numbers only`;
         }
         if (!player.inGameName.trim()) {
           tempErrors[`player_${index}_inGameName`] = `In-game Name for Player ${index + 1} is required`;
@@ -182,7 +189,6 @@ export default function RegisterModal({ isOpen, onClose, eventId }) {
     formData.append('registrationType', activeTab === 'solo' ? 'Solo' : 'Team');
     formData.append('allCharacterIds', JSON.stringify(characterIds));
     formData.append('allInGameNames', JSON.stringify(inGameNames));
-    formData.append('contactPhoneNumber', contactPhone.trim());
     formData.append('whatsappNumber', whatsappNumber.trim());
     formData.append('transactionId', transactionId.trim());
     formData.append('paymentScreenshot', screenshotFile);
@@ -218,7 +224,6 @@ export default function RegisterModal({ isOpen, onClose, eventId }) {
       { characterId: '', inGameName: '' },
       { characterId: '', inGameName: '' }
     ]);
-    setContactPhone('');
     setWhatsappNumber('');
     setTransactionId('');
     setScreenshotFile(null);
@@ -234,15 +239,9 @@ export default function RegisterModal({ isOpen, onClose, eventId }) {
   return (
     <div className="fixed inset-0 bg-black/85 flex justify-center items-start overflow-y-auto z-[100] p-4 backdrop-blur-md">
       <div className="pubg-hud-panel p-6 max-w-lg w-full bg-[#12120e] relative border-2 border-eb-yellow rounded-none my-8 animate-zoomIn">
-        
-        {/* HUD Corner Brackets */}
-        <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-eb-yellow !m-0"></div>
-        <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-eb-yellow !m-0"></div>
-        <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-eb-yellow !m-0"></div>
-        <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-eb-yellow !m-0"></div>
 
         {/* Modal Header */}
-        <div className="border-b border-gray-900 pb-3 flex justify-between items-center flex-shrink-0">
+        <div className="border-b border-eb-yellow/30 pb-3 flex justify-between items-center flex-shrink-0">
           <h3 className="text-sm font-black text-white uppercase tracking-widest">
             Tournament Registration
           </h3>
@@ -271,7 +270,7 @@ export default function RegisterModal({ isOpen, onClose, eventId }) {
               </p>
             </div>
 
-            <div className="bg-black/60 border border-gray-950 p-4 space-y-2 text-xs text-left max-w-md mx-auto font-mono">
+            <div className="bg-black/60 border border-eb-yellow/30 p-4 space-y-2 text-xs text-left max-w-md mx-auto font-mono">
               <div className="flex justify-between">
                 <span className="text-gray-500">Tracking UID:</span>
                 <span className="text-white font-bold">{successReg?.trackingUid}</span>
@@ -298,25 +297,10 @@ export default function RegisterModal({ isOpen, onClose, eventId }) {
             
             {/* Format Banner or Tabs Selector */}
             {activeEvent.type === 'Squad' ? (
-              <div className="grid grid-cols-2 gap-2 bg-black p-1 border border-white/5">
-                <button
-                  type="button"
-                  onClick={() => { setActiveTab('solo'); setErrors({}); }}
-                  className={`py-2 text-[10px] font-black uppercase tracking-wider transition-all duration-200 ${
-                    activeTab === 'solo' ? 'bg-eb-yellow text-black' : 'text-gray-400 hover:text-white'
-                  }`}
-                >
-                  Solo Registration
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setActiveTab('team'); setErrors({}); }}
-                  className={`py-2 text-[10px] font-black uppercase tracking-wider transition-all duration-200 ${
-                    activeTab === 'team' ? 'bg-eb-yellow text-black' : 'text-gray-400 hover:text-white'
-                  }`}
-                >
-                  Team Registration
-                </button>
+              <div className="text-center py-2 bg-black border border-white/5 rounded-sm">
+                <span className="text-[10px] font-black uppercase tracking-widest text-eb-yellow">
+                  Format: Squad Tournament (Team Only)
+                </span>
               </div>
             ) : (
               <div className="text-center py-2 bg-black border border-white/5 rounded-sm">
@@ -371,13 +355,13 @@ export default function RegisterModal({ isOpen, onClose, eventId }) {
               {/* TEAM TAB FORM FIELDS */}
               {activeTab === 'team' && (
                 <div className="space-y-3 border border-white/5 p-3 bg-black/40">
-                  <div className="flex justify-between items-center pb-1 border-b border-gray-900">
+                  <div className="flex justify-between items-center pb-1 border-b border-eb-yellow/30">
                     <span className="text-[9px] font-black text-white uppercase tracking-wider">Squad Roster (Exactly 4 Players)</span>
                   </div>
 
                   <div className="space-y-3">
                     {teamPlayers.map((player, idx) => (
-                      <div key={idx} className="space-y-2 border-b border-gray-950 pb-2.5 last:border-b-0 last:pb-0">
+                      <div key={idx} className="space-y-2 border-b border-eb-yellow/30 pb-2.5 last:border-b-0 last:pb-0">
                         <div className="flex items-center justify-between">
                           <span className="text-[8px] font-bold text-orig-yellow">PLAYER {idx + 1} {idx === 0 && '(Leader)'}</span>
                         </div>
@@ -417,32 +401,17 @@ export default function RegisterModal({ isOpen, onClose, eventId }) {
               )}
 
               {/* Shared Contact details */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-[9px] font-bold text-gray-400 uppercase tracking-widest block">Contact Phone</label>
-                  <input
-                    type="text"
-                    value={contactPhone}
-                    onChange={(e) => setContactPhone(e.target.value)}
-                    placeholder="e.g. 03001234567"
-                    className="pubg-input w-full text-xs"
-                    required
-                  />
-                  {errors.contactPhone && <p className="text-tan text-[9px] font-bold mt-1">{errors.contactPhone}</p>}
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[9px] font-bold text-gray-400 uppercase tracking-widest block">WhatsApp Number</label>
-                  <input
-                    type="text"
-                    value={whatsappNumber}
-                    onChange={(e) => setWhatsappNumber(e.target.value)}
-                    placeholder="e.g. 03001234567"
-                    className="pubg-input w-full text-xs"
-                    required
-                  />
-                  {errors.whatsappNumber && <p className="text-tan text-[9px] font-bold mt-1">{errors.whatsappNumber}</p>}
-                </div>
+              <div className="space-y-1">
+                <label className="text-[9px] font-bold text-gray-400 uppercase tracking-widest block">WhatsApp Number</label>
+                <input
+                  type="text"
+                  value={whatsappNumber}
+                  onChange={(e) => setWhatsappNumber(e.target.value)}
+                  placeholder="e.g. 03001234567"
+                  className="pubg-input w-full text-xs"
+                  required
+                />
+                {errors.whatsappNumber && <p className="text-tan text-[9px] font-bold mt-1">{errors.whatsappNumber}</p>}
               </div>
 
               {/* Transaction ID & Receipt */}
@@ -462,10 +431,10 @@ export default function RegisterModal({ isOpen, onClose, eventId }) {
 
                 <div className="space-y-1">
                   <label className="text-[9px] font-bold text-gray-400 uppercase tracking-widest block">Registration Fee Due</label>
-                  <div className="pubg-input w-full text-xs font-mono font-bold bg-black text-gold flex items-center justify-between border-dashed border border-gray-800">
+                  <div className="pubg-input w-full text-xs font-mono font-bold bg-black text-gold flex items-center justify-between border-dashed border border-eb-yellow/30">
                     <span>PKR {entryFee.toLocaleString()}</span>
                     <span className="text-[8px] bg-eb-yellow/10 text-eb-yellow px-1 py-0.5 border border-eb-yellow/20 uppercase font-sans">
-                      {activeTab === 'solo' ? 'Solo Rate' : 'Team Rate'}
+                      {activeEvent.type === 'Solo' ? 'Solo Entry Fee' : 'Team Entry Fee'}
                     </span>
                   </div>
                 </div>
@@ -475,7 +444,7 @@ export default function RegisterModal({ isOpen, onClose, eventId }) {
               <div className="space-y-1">
                 <label className="text-[9px] font-bold text-gray-400 uppercase tracking-widest block">Upload Slip Receipt</label>
                 
-                <div className="border border-dashed border-gray-800 rounded p-4 flex flex-col items-center justify-center cursor-pointer bg-black/60 relative hover:border-eb-yellow/30 transition-all duration-200">
+                <div className="border border-dashed border-eb-yellow/30 rounded p-4 flex flex-col items-center justify-center cursor-pointer bg-black/60 relative hover:border-eb-yellow/50 transition-all duration-200">
                   <input 
                     type="file" 
                     id="receipt-file-modal"
@@ -490,7 +459,7 @@ export default function RegisterModal({ isOpen, onClose, eventId }) {
                         <img 
                           src={screenshotPreview} 
                           alt="Receipt Preview" 
-                          className="max-h-24 mx-auto rounded object-contain border border-gray-900"
+                          className="max-h-24 mx-auto rounded object-contain border border-eb-yellow/30"
                         />
                         <p className="text-[8px] text-eb-yellow font-black uppercase tracking-wider animate-pulse flex items-center justify-center gap-0.5">
                           <FileImage className="w-3.5 h-3.5" /> Change Screenshot
@@ -509,7 +478,7 @@ export default function RegisterModal({ isOpen, onClose, eventId }) {
               </div>
 
               {/* Payment calculations info */}
-              <div className="bg-black/60 p-3 rounded border border-gray-950 text-[10px] text-gray-400 space-y-1 font-semibold">
+              <div className="bg-black/60 p-3 rounded border border-eb-yellow/30 text-[10px] text-gray-400 space-y-1 font-semibold">
                 <div className="flex justify-between">
                   <span>Entry Rate:</span>
                   <span className="text-white">PKR {entryFee.toLocaleString()}</span>
@@ -518,7 +487,7 @@ export default function RegisterModal({ isOpen, onClose, eventId }) {
                   <span>Transaction Fee:</span>
                   <span className="text-white">PKR {platformFee.toLocaleString()}</span>
                 </div>
-                <div className="flex justify-between border-t border-gray-900 pt-1 text-gold font-bold uppercase tracking-wider text-[11px]">
+                <div className="flex justify-between border-t border-eb-yellow/30 pt-1 text-gold font-bold uppercase tracking-wider text-[11px]">
                   <span>Total Due:</span>
                   <span className="text-eb-yellow">PKR {totalAmount.toLocaleString()}</span>
                 </div>
@@ -529,7 +498,7 @@ export default function RegisterModal({ isOpen, onClose, eventId }) {
                 type="submit"
                 disabled={submitting}
                 className={`w-full py-2.5 text-black font-black uppercase text-xs tracking-widest transition-all duration-300 ${
-                  submitting ? 'bg-gray-900 text-gray-600 cursor-wait border border-gray-850' : 'bg-eb-yellow hover:scale-[1.01]'
+                  submitting ? 'bg-gray-900 text-gray-650 cursor-wait border border-eb-yellow/20' : 'bg-eb-yellow hover:scale-[1.01]'
                 }`}
               >
                 {submitting ? 'Uploading to cloud...' : 'Register & Upload Slip'}

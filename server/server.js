@@ -48,6 +48,7 @@ const Event = require('./models/Event');
 const Registration = require('./models/Registration');
 const User = require('./models/User');
 const Leaderboard = require('./models/Leaderboard');
+const GroupStageMatch = require('./models/GroupStageMatch');
 const crypto = require('crypto');
 
 /* ==========================================================================
@@ -239,7 +240,20 @@ app.get('/api/events/active', async (req, res) => {
     if (!activeEvent) {
       return res.status(404).json({ message: 'No active tournament event found' });
     }
-    res.json(activeEvent);
+
+    const activeRegistrations = await Registration.find({
+      eventId: activeEvent._id,
+      paymentStatus: { $ne: 'Rejected' }
+    });
+    let totalPlayersCount = 0;
+    for (const reg of activeRegistrations) {
+      totalPlayersCount += reg.allCharacterIds.length;
+    }
+
+    const eventJson = activeEvent.toJSON();
+    eventJson.registeredPlayersCount = totalPlayersCount;
+
+    res.json(eventJson);
   } catch (err) {
     console.error('Error fetching active event:', err);
     res.status(500).json({ error: 'Failed to retrieve active event' });
@@ -375,13 +389,14 @@ app.post('/api/registrations', registrationLimiter, upload.single('paymentScreen
       }
     }
 
-    // Check registration deadline
-    if (new Date() > new Date(targetEvent.registrationDeadline)) {
-      return res.status(400).json({ error: 'Registration deadline has passed for this tournament.' });
+    // Check registration deadline (stops 24 hours before matchStartTime)
+    const deadlineTime = new Date(new Date(targetEvent.matchStartTime).getTime() - 24 * 60 * 60 * 1000);
+    if (new Date() > deadlineTime) {
+      return res.status(400).json({ error: 'Registrations are closed. Registration stops 24 hours before the match starts.' });
     }
 
-    const { registrationType, allCharacterIds, allInGameNames, contactPhoneNumber, whatsappNumber, transactionId } = req.body;
-    if (!registrationType || !allCharacterIds || !allInGameNames || !contactPhoneNumber || !whatsappNumber || !transactionId) {
+    const { registrationType, allCharacterIds, allInGameNames, whatsappNumber, transactionId } = req.body;
+    if (!registrationType || !allCharacterIds || !allInGameNames || !whatsappNumber || !transactionId) {
       return res.status(400).json({ error: 'Missing required registration details.' });
     }
 
@@ -412,9 +427,16 @@ app.post('/api/registrations', registrationLimiter, upload.single('paymentScreen
     } else if (Array.isArray(allInGameNames)) {
       igNames = allInGameNames;
     }
-
     if (uids.length < 1 || igNames.length < 1) {
       return res.status(400).json({ error: 'You must register at least 1 player with Character UID and In-game Name.' });
+    }
+
+    // Validate that all character UIDs contain only digits
+    const numericRegex = /^\d+$/;
+    for (const uid of uids) {
+      if (!numericRegex.test(uid)) {
+        return res.status(400).json({ error: 'Character UID must contain numbers only.' });
+      }
     }
 
     // Validate roster sizes based on registration type and tournament type
@@ -423,11 +445,11 @@ app.post('/api/registrations', registrationLimiter, upload.single('paymentScreen
         return res.status(400).json({ error: 'Solo tournaments only support individual (Solo) registrations.' });
       }
     } else if (targetEvent.type === 'Squad') {
+      if (registrationType === 'Solo') {
+        return res.status(400).json({ error: 'Solo registrations are not allowed for Squad tournaments.' });
+      }
       if (registrationType === 'Team' && (uids.length !== 4 || igNames.length !== 4)) {
         return res.status(400).json({ error: 'Squad registrations must contain exactly 4 players.' });
-      }
-      if (registrationType === 'Solo' && (uids.length !== 1 || igNames.length !== 1)) {
-        return res.status(400).json({ error: 'Solo registrations must contain exactly 1 player.' });
       }
     }
 
@@ -442,8 +464,11 @@ app.post('/api/registrations', registrationLimiter, upload.single('paymentScreen
       totalPlayersCount += reg.allCharacterIds.length;
     }
 
-    if (totalPlayersCount + uids.length > 100) {
-      return res.status(400).json({ error: `Registration limit reached. Maximum players allowed is 100. Current total registered is ${totalPlayersCount} players.` });
+    const isSolo = targetEvent.type === 'Solo';
+    const maxLimit = isSolo ? 100 : 96;
+
+    if (totalPlayersCount + uids.length > maxLimit) {
+      return res.status(400).json({ error: `Registration limit reached. Maximum players allowed for ${targetEvent.type} is ${maxLimit}. Current total registered is ${totalPlayersCount} players.` });
     }
 
     // FIX 5: Validate UIDs using escaped regex to prevent injection
@@ -455,9 +480,9 @@ app.post('/api/registrations', registrationLimiter, upload.single('paymentScreen
     }
 
     const trackingUid = uids[0];
-    
+
     // Check if any of the UIDs have already registered for this event
-    const existing = await Registration.findOne({ 
+    const existing = await Registration.findOne({
       eventId: targetEvent._id,
       $or: [
         { trackingUid: { $in: uids } },
@@ -478,7 +503,6 @@ app.post('/api/registrations', registrationLimiter, upload.single('paymentScreen
       trackingUid,
       allCharacterIds: uids,
       allInGameNames: igNames,
-      contactPhoneNumber,
       whatsappNumber,
       transactionId,
       paymentScreenshot: paymentScreenshotUrl,
@@ -486,7 +510,7 @@ app.post('/api/registrations', registrationLimiter, upload.single('paymentScreen
     });
 
     await newReg.save();
-    res.status(201).json({ 
+    res.status(201).json({
       message: 'Registration form received! Access credentials later using searched Character IDs.',
       registration: newReg
     });
@@ -526,7 +550,7 @@ app.get('/api/registrations/portal/:uid', async (req, res) => {
       _id: registration._id,
       trackingUid: registration.trackingUid,
       allCharacterIds: registration.allCharacterIds,
-      contactPhoneNumber: registration.contactPhoneNumber,
+      whatsappNumber: registration.whatsappNumber,
       paymentScreenshot: registration.paymentScreenshot,
       paymentStatus: registration.paymentStatus,
       matchProofScreenshot: registration.matchProofScreenshot,
@@ -632,7 +656,7 @@ app.post('/api/admin/verify-passcode', adminPasscodeLimiter, (req, res) => {
 app.post('/api/admin/events', requireAdmin, async (req, res) => {
   try {
     const { title, soloEntryFee, teamEntryFee, numberOfDays, registrationDeadline, matchStartTime, isActive, status, map, description, type } = req.body;
-    
+
     if (!title || soloEntryFee === undefined || teamEntryFee === undefined || !registrationDeadline || !matchStartTime) {
       return res.status(400).json({ error: 'Missing tournament parameter entries.' });
     }
@@ -815,6 +839,345 @@ app.put('/api/admin/events/active/leaderboard', requireAdmin, async (req, res) =
   }
 });
 
+// ==========================================================================
+// GROUP STAGE / SQUAD TOURNAMENT ENDPOINTS
+// ==========================================================================
+
+// Bulk set seeds for approved registrations, automatically assigning Groups A, B, C based on snake seeding
+// Bulk set seeds sequentially for approved registrations: Group A (1-8), Group B (9-16), Group C (17-24)
+app.put('/api/admin/events/active/seeding', requireAdmin, async (req, res) => {
+  try {
+    const activeEvent = await Event.findOne({ isActive: true });
+    if (!activeEvent) {
+      return res.status(404).json({ error: 'No active event found.' });
+    }
+
+    // Get all approved registrations sorted chronologically by approval/creation time
+    const approvedRegs = await Registration.find({
+      eventId: activeEvent._id,
+      paymentStatus: 'Approved'
+    }).sort({ createdAt: 1 });
+
+    for (let idx = 0; idx < approvedRegs.length; idx++) {
+      const reg = approvedRegs[idx];
+      let groupName = null;
+      let seedNum = idx + 1;
+
+      if (idx < 8) {
+        groupName = 'A';
+      } else if (idx < 16) {
+        groupName = 'B';
+      } else if (idx < 24) {
+        groupName = 'C';
+      }
+
+      await Registration.updateOne(
+        { _id: reg._id },
+        { $set: { groupStageSeed: seedNum, groupStageGroup: groupName } }
+      );
+    }
+
+    res.json({ success: true, message: 'Sequential seeding and group allocation completed successfully.' });
+  } catch (err) {
+    console.error('Error in bulk seeding:', err);
+    res.status(500).json({ error: 'Failed to update seeding.' });
+  }
+});
+
+// Seeding for specific eventId
+app.put('/api/admin/events/:eventId/seeding', requireAdmin, async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    const targetEvent = await Event.findById(eventId);
+    if (!targetEvent) {
+      return res.status(404).json({ error: 'Event not found.' });
+    }
+
+    const approvedRegs = await Registration.find({
+      eventId: targetEvent._id,
+      paymentStatus: 'Approved'
+    }).sort({ createdAt: 1 });
+
+    for (let idx = 0; idx < approvedRegs.length; idx++) {
+      const reg = approvedRegs[idx];
+      let groupName = null;
+      let seedNum = idx + 1;
+
+      if (idx < 8) {
+        groupName = 'A';
+      } else if (idx < 16) {
+        groupName = 'B';
+      } else if (idx < 24) {
+        groupName = 'C';
+      }
+
+      await Registration.updateOne(
+        { _id: reg._id },
+        { $set: { groupStageSeed: seedNum, groupStageGroup: groupName } }
+      );
+    }
+
+    res.json({ success: true, message: 'Sequential seeding completed successfully.' });
+  } catch (err) {
+    console.error('Error in bulk seeding:', err);
+    res.status(500).json({ error: 'Failed to update seeding.' });
+  }
+});
+
+// Add a custom match for specific eventId
+app.post('/api/admin/events/:eventId/group-stage/matches', requireAdmin, async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    const { matchNumber, dayNumber, matchDate, matchup, map, roomId, roomPassword } = req.body;
+    if (!matchNumber || !dayNumber || !matchDate || !matchup || !map) {
+      return res.status(400).json({ error: 'Missing required match fields.' });
+    }
+
+    const newMatch = new GroupStageMatch({
+      eventId,
+      matchNumber: Number(matchNumber),
+      dayNumber: Number(dayNumber),
+      matchDate: new Date(matchDate),
+      matchup,
+      map,
+      roomId: roomId || "",
+      roomPassword: roomPassword || "",
+      scores: [],
+      isPlayed: false
+    });
+
+    await newMatch.save();
+    res.status(201).json({ success: true, message: 'Match added successfully.', match: newMatch });
+  } catch (err) {
+    console.error('Error adding match:', err);
+    res.status(500).json({ error: 'Failed to add match.' });
+  }
+});
+
+// Get schedule and match results for specific eventId
+app.get('/api/events/:eventId/group-stage/schedule', async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    const matches = await GroupStageMatch.find({ eventId }).sort({ matchNumber: 1 });
+    res.json(matches);
+  } catch (err) {
+    console.error('Error fetching schedule:', err);
+    res.status(500).json({ error: 'Failed to fetch schedule.' });
+  }
+});
+
+// Add a custom match (active event backward compatibility)
+app.post('/api/admin/events/active/group-stage/matches', requireAdmin, async (req, res) => {
+  try {
+    const activeEvent = await Event.findOne({ isActive: true });
+    if (!activeEvent) {
+      return res.status(404).json({ error: 'No active event found.' });
+    }
+
+    const { matchNumber, dayNumber, matchDate, matchup, map, roomId, roomPassword } = req.body;
+    if (!matchNumber || !dayNumber || !matchDate || !matchup || !map) {
+      return res.status(400).json({ error: 'Missing required match fields.' });
+    }
+
+    const newMatch = new GroupStageMatch({
+      eventId: activeEvent._id,
+      matchNumber: Number(matchNumber),
+      dayNumber: Number(dayNumber),
+      matchDate: new Date(matchDate),
+      matchup,
+      map,
+      roomId: roomId || "",
+      roomPassword: roomPassword || "",
+      scores: [],
+      isPlayed: false
+    });
+
+    await newMatch.save();
+    res.status(201).json({ success: true, message: 'Match added successfully.', match: newMatch });
+  } catch (err) {
+    console.error('Error adding match:', err);
+    res.status(500).json({ error: 'Failed to add match.' });
+  }
+});
+
+// Update/Edit custom match (including scores and room credentials)
+app.put('/api/admin/events/active/group-stage/matches/:matchId', requireAdmin, async (req, res) => {
+  try {
+    const { matchId } = req.params;
+    const { matchNumber, dayNumber, matchDate, matchup, map, roomId, roomPassword, scores, isPlayed } = req.body;
+
+    const match = await GroupStageMatch.findById(matchId);
+    if (!match) {
+      return res.status(404).json({ error: 'Match not found.' });
+    }
+
+    if (matchNumber !== undefined) match.matchNumber = Number(matchNumber);
+    if (dayNumber !== undefined) match.dayNumber = Number(dayNumber);
+    if (matchDate !== undefined) match.matchDate = new Date(matchDate);
+    if (matchup !== undefined) match.matchup = matchup;
+    if (map !== undefined) match.map = map;
+    if (roomId !== undefined) match.roomId = roomId;
+    if (roomPassword !== undefined) match.roomPassword = roomPassword;
+    if (isPlayed !== undefined) match.isPlayed = Boolean(isPlayed);
+
+    if (scores && Array.isArray(scores)) {
+      const populatedScores = [];
+      for (const s of scores) {
+        const reg = await Registration.findById(s.registrationId);
+        populatedScores.push({
+          registrationId: s.registrationId,
+          teamName: reg ? (reg.allInGameNames?.[0] || 'Unknown') : 'Unknown',
+          kills: Number(s.kills || 0),
+          placement: Number(s.placement || 16)
+        });
+      }
+      match.scores = populatedScores;
+      match.isPlayed = true; // Auto-mark played if scores are updated
+    }
+
+    await match.save();
+    res.json({ success: true, message: 'Match updated successfully.', match });
+  } catch (err) {
+    console.error('Error updating match:', err);
+    res.status(500).json({ error: 'Failed to update match.' });
+  }
+});
+
+// Delete a custom match
+app.delete('/api/admin/events/active/group-stage/matches/:matchId', requireAdmin, async (req, res) => {
+  try {
+    const { matchId } = req.params;
+    await GroupStageMatch.deleteOne({ _id: matchId });
+    res.json({ success: true, message: 'Match deleted successfully.' });
+  } catch (err) {
+    console.error('Error deleting match:', err);
+    res.status(500).json({ error: 'Failed to delete match.' });
+  }
+});
+
+// Get schedule and match results
+app.get('/api/events/active/group-stage/schedule', async (req, res) => {
+  try {
+    const activeEvent = await Event.findOne({ isActive: true });
+    if (!activeEvent) {
+      return res.status(404).json({ error: 'No active event found.' });
+    }
+
+    const matches = await GroupStageMatch.find({ eventId: activeEvent._id }).sort({ matchNumber: 1 });
+    res.json(matches);
+  } catch (err) {
+    console.error('Error fetching schedule:', err);
+    res.status(500).json({ error: 'Failed to fetch schedule.' });
+  }
+});
+
+// Get consolidated group stage leaderboard applying SUPER ruleset and tiebreakers
+app.get('/api/events/active/group-stage/leaderboard', async (req, res) => {
+  try {
+    const activeEvent = await Event.findOne({ isActive: true });
+    if (!activeEvent) {
+      return res.status(404).json({ error: 'No active event found.' });
+    }
+
+    // Fetch all approved registrations
+    const registrations = await Registration.find({
+      eventId: activeEvent._id,
+      paymentStatus: 'Approved'
+    });
+
+    // Fetch all played matches
+    const matches = await GroupStageMatch.find({
+      eventId: activeEvent._id,
+      isPlayed: true
+    }).sort({ matchNumber: 1 });
+
+    // Initialize stats per team
+    const standingsMap = {};
+    for (const reg of registrations) {
+      standingsMap[reg._id.toString()] = {
+        registration: reg,
+        totalKills: 0,
+        totalPlacementPoints: 0,
+        totalPoints: 0,
+        matchPointsList: [], // Array of single-match points (placement + kills) for tiebreaker 3
+        matchPlacementsList: [], // Array of placements per match for tiebreaker 4
+        matchesPlayedCount: 0
+      };
+    }
+
+    // SUPER Ruleset Placement points mapping
+    const getPlacementPoints = (placement) => {
+      if (placement === 1) return 10;
+      if (placement === 2) return 6;
+      if (placement === 3) return 5;
+      if (placement === 4) return 4;
+      if (placement === 5) return 3;
+      if (placement === 6) return 2;
+      if (placement === 7 || placement === 8) return 1;
+      return 0; // 9th to 16th
+    };
+
+    // Calculate aggregated stats
+    for (const match of matches) {
+      for (const score of match.scores) {
+        const regIdStr = score.registrationId.toString();
+        if (standingsMap[regIdStr]) {
+          const stats = standingsMap[regIdStr];
+          const killPoints = Number(score.kills || 0);
+          const placementPoints = getPlacementPoints(Number(score.placement || 16));
+          const matchPoints = killPoints + placementPoints;
+
+          stats.totalKills += killPoints;
+          stats.totalPlacementPoints += placementPoints;
+          stats.totalPoints += matchPoints;
+          stats.matchPointsList.push(matchPoints);
+          stats.matchPlacementsList.push(Number(score.placement || 16));
+          stats.matchesPlayedCount += 1;
+        }
+      }
+    }
+
+    // Convert map to list
+    const standingsList = Object.values(standingsMap);
+
+    // Apply sorting & Tiebreaker Hierarchy:
+    // (1) Total Points (Total Placement Points + Total Kill Points)
+    // (2) Total Placement Points
+    // (3) Total Kill Points
+    // (4) Highest single-match points (placement + kills in a single match)
+    // (5) Most recent match placement (lower placement/closer to 1 is better)
+    standingsList.sort((a, b) => {
+      // 1. Total Points
+      if (b.totalPoints !== a.totalPoints) {
+        return b.totalPoints - a.totalPoints;
+      }
+      // 2. Total Placement Points
+      if (b.totalPlacementPoints !== a.totalPlacementPoints) {
+        return b.totalPlacementPoints - a.totalPlacementPoints;
+      }
+      // 3. Total Kill Points
+      if (b.totalKills !== a.totalKills) {
+        return b.totalKills - a.totalKills;
+      }
+      // 4. Highest single-match points
+      const maxA = a.matchPointsList.length > 0 ? Math.max(...a.matchPointsList) : 0;
+      const maxB = b.matchPointsList.length > 0 ? Math.max(...b.matchPointsList) : 0;
+      if (maxB !== maxA) {
+        return maxB - maxA;
+      }
+      // 5. Most recent match placement (lower placement is better, e.g. 1st is better than 5th)
+      const lastPlA = a.matchPlacementsList.length > 0 ? a.matchPlacementsList[a.matchPlacementsList.length - 1] : 16;
+      const lastPlB = b.matchPlacementsList.length > 0 ? b.matchPlacementsList[b.matchPlacementsList.length - 1] : 16;
+      return lastPlA - lastPlB;
+    });
+
+    res.json(standingsList);
+  } catch (err) {
+    console.error('Error calculating consolidated leaderboard:', err);
+    res.status(500).json({ error: 'Failed to retrieve group stage leaderboard.' });
+  }
+});
+
 // Fetch pending registrations queue
 app.get('/api/admin/registrations/pending', requireAdmin, async (req, res) => {
   try {
@@ -848,6 +1211,21 @@ app.get('/api/admin/registrations/approved', requireAdmin, async (req, res) => {
       paymentStatus: 'Approved'
     }).sort({ createdAt: 1 });
 
+    res.json(approveds);
+  } catch (err) {
+    console.error('Error fetching approved registrations:', err);
+    res.status(500).json({ error: 'Failed to fetch approved registrations list.' });
+  }
+});
+
+// Fetch approved registrations list for specific eventId
+app.get('/api/admin/events/:eventId/registrations/approved', requireAdmin, async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    const approveds = await Registration.find({
+      eventId,
+      paymentStatus: 'Approved'
+    }).sort({ createdAt: 1 });
     res.json(approveds);
   } catch (err) {
     console.error('Error fetching approved registrations:', err);
@@ -1098,7 +1476,7 @@ app.post('/api/auth/recover', authLimiter, async (req, res) => {
 // Get all custom leaderboard entries
 app.get('/api/leaderboard', async (req, res) => {
   try {
-    const list = await Leaderboard.find({}).sort({ rank: 1, points: -1 });
+    const list = await Leaderboard.find({}).sort({ tournamentName: 1, dayNumber: 1 });
     res.json(list);
   } catch (err) {
     console.error('Error fetching custom leaderboard:', err);
@@ -1109,16 +1487,15 @@ app.get('/api/leaderboard', async (req, res) => {
 // Add custom leaderboard entry (admin)
 app.post('/api/admin/leaderboard', requireAdmin, async (req, res) => {
   try {
-    const { rank, name, details, kills, points } = req.body;
-    if (rank === undefined || !name) {
+    const { tournamentName, dayNumber, type, teams } = req.body;
+    if (!tournamentName || dayNumber === undefined) {
       return res.status(400).json({ error: 'Missing required leaderboard parameters.' });
     }
     const entry = new Leaderboard({
-      rank: Number(rank),
-      name,
-      details: details || "",
-      kills: kills !== undefined ? Number(kills) : 0,
-      points: points !== undefined ? Number(points) : 0
+      tournamentName,
+      dayNumber: Number(dayNumber),
+      type: type || 'Squad',
+      teams: teams || []
     });
     await entry.save();
     res.status(201).json(entry);
@@ -1132,17 +1509,16 @@ app.post('/api/admin/leaderboard', requireAdmin, async (req, res) => {
 app.put('/api/admin/leaderboard/:id', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const { rank, name, details, kills, points } = req.body;
+    const { tournamentName, dayNumber, type, teams } = req.body;
     const entry = await Leaderboard.findById(id);
     if (!entry) {
       return res.status(404).json({ error: 'Leaderboard entry not found.' });
     }
-    if (rank !== undefined) entry.rank = Number(rank);
-    if (name) entry.name = name;
-    if (details !== undefined) entry.details = details;
-    if (kills !== undefined) entry.kills = Number(kills);
-    if (points !== undefined) entry.points = Number(points);
-    
+    if (tournamentName) entry.tournamentName = tournamentName;
+    if (dayNumber !== undefined) entry.dayNumber = Number(dayNumber);
+    if (type) entry.type = type;
+    if (teams) entry.teams = teams;
+
     await entry.save();
     res.json(entry);
   } catch (err) {

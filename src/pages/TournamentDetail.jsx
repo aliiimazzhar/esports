@@ -163,14 +163,14 @@ export default function TournamentDetail() {
 
             {/* Map Sequence & Schedule */}
             <div className="pubg-hud-panel p-6 space-y-4">
-              <h3 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2 border-b border-gray-900 pb-3">
+              <h3 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2 border-b border-eb-yellow/30 pb-3">
                 <Map className="w-5 h-5 text-orig-yellow" />
                 Map Schedule Sequence
               </h3>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {tournament.mapSchedule.map((map, idx) => (
-                  <div key={map} className={`bg-black/60 border border-gray-900 hover:border-eb-yellow/30 rounded p-4 flex items-center justify-between transition-all duration-200 animate-slideInLeft animation-delay-${(idx + 1) * 100}`}>
+                  <div key={map} className={`bg-black/60 border border-eb-yellow/30 hover:border-eb-yellow/30 rounded p-4 flex items-center justify-between transition-all duration-200 animate-slideInLeft animation-delay-${(idx + 1) * 100}`}>
                     <div>
                       <span className="text-[9px] text-gray-500 uppercase font-black tracking-wider">Match #{idx + 1}</span>
                       <h4 className="text-xs font-bold text-white uppercase tracking-wider">{map}</h4>
@@ -200,12 +200,12 @@ export default function TournamentDetail() {
           <div className="space-y-6 animate-zoomIn">
             
             <div className="pubg-hud-panel cyber-card p-6 space-y-5 shadow-glow-yellow-sm">
-              <h3 className="text-sm font-black uppercase text-white tracking-widest border-b border-gray-900 pb-3">
+              <h3 className="text-sm font-black uppercase text-white tracking-widest border-b border-eb-yellow/30 pb-3">
                 Register Squad
               </h3>
 
               {/* Toggle Selector */}
-              <div className="grid grid-cols-2 gap-2 bg-black p-1 rounded border border-gray-950">
+              <div className="grid grid-cols-2 gap-2 bg-black p-1 rounded border border-eb-yellow/30">
                 <button
                   onClick={() => { setRegistrationMode('select'); setFormErrors({}); }}
                   className={`py-1.5 rounded text-[10px] font-black uppercase tracking-wider transition-all duration-200 ${
@@ -256,7 +256,7 @@ export default function TournamentDetail() {
                       )}
                     </div>
                   ) : (
-                    <div className="text-center p-6 bg-black/40 border border-gray-900 rounded space-y-3">
+                    <div className="text-center p-6 bg-black/40 border border-eb-yellow/30 rounded space-y-3">
                       <Users className="w-8 h-8 text-gray-700 mx-auto" />
                       <p className="text-xs text-gray-500">You don't have any squads created yet.</p>
                       <button
@@ -309,7 +309,7 @@ export default function TournamentDetail() {
               )}
 
               {/* Invoice breakdown */}
-              <div className="space-y-2.5 pt-4 border-t border-gray-900 text-xs text-gray-400 font-semibold">
+              <div className="space-y-2.5 pt-4 border-t border-eb-yellow/30 text-xs text-gray-400 font-semibold">
                 <div className="flex justify-between">
                   <span>Entry Fee</span>
                   <span className="font-bold text-white">PKR {tournament.entryFee.toLocaleString()}</span>
@@ -318,7 +318,7 @@ export default function TournamentDetail() {
                   <span>Platform Processing</span>
                   <span className="font-bold text-white">PKR {platformFee.toLocaleString()}</span>
                 </div>
-                <div className="flex justify-between border-t border-gray-900 pt-3 text-xs text-gold font-black uppercase tracking-wider">
+                <div className="flex justify-between border-t border-eb-yellow/30 pt-3 text-xs text-gold font-black uppercase tracking-wider">
                   <span>Total Amount Due</span>
                   <span className="text-eb-yellow font-black text-sm">PKR {totalAmount.toLocaleString()}</span>
                 </div>
@@ -330,7 +330,7 @@ export default function TournamentDetail() {
                 disabled={registrationMode === 'select' && (!selectedTeamId || isTeamRegistered(selectedTeamId))}
                 className={`w-full py-3 text-black font-black uppercase text-xs tracking-widest transition-all duration-300 ${
                   registrationMode === 'select' && (!selectedTeamId || isTeamRegistered(selectedTeamId))
-                    ? 'bg-gray-950 text-gray-600 cursor-not-allowed border border-gray-900'
+                    ? 'bg-gray-950 text-gray-600 cursor-not-allowed border border-eb-yellow/30'
                     : 'bg-eb-yellow hover:bg-gold hover:scale-[1.02] hover:shadow-glow-yellow'
                 }`}
               >
