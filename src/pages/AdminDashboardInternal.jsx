@@ -397,7 +397,9 @@ export default function AdminDashboardInternal() {
     setSelectedGroupMatch(match);
     const matchupStr = match.matchup;
     const groups = matchupStr.split(' vs ').map(g => g.trim());
-    const playingTeams = approvedRegs.filter(reg => groups.includes(reg.groupStageGroup));
+    const playingTeams = (selectedTournament?.type === 'Solo' || activeEvent?.type === 'Solo')
+      ? approvedRegs
+      : approvedRegs.filter(reg => groups.includes(reg.groupStageGroup));
 
     const initializedScores = playingTeams.map(team => {
       const existingScore = match.scores?.find(s => s.registrationId === team._id);
@@ -2152,7 +2154,7 @@ export default function AdminDashboardInternal() {
               </div>
 
               {/* 1. SEQUENTIAL SEEDING & ROSTER GROUP SUMMARY */}
-              {selectedTournament?.type === 'Squad' && (
+              {(selectedTournament?.type === 'Squad' || selectedTournament?.type === 'Solo') && (
                 <div className="pubg-hud-panel p-6 space-y-5">
 
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-eb-yellow/30 pb-3">
@@ -2161,7 +2163,7 @@ export default function AdminDashboardInternal() {
                       <Users className="w-4 h-4 text-eb-yellow" /> Sequential Group Seeding
                     </h4>
                     <p className="text-[9px] text-gray-500 font-bold uppercase mt-0.5">
-                      Rosters are assigned: first 8 approved to Group A, next 8 to Group B, next 8 to Group C.
+                      {selectedTournament?.type === 'Solo' ? 'Players' : 'Rosters'} are assigned: first 8 approved to Group A, next 8 to Group B, next 8 to Group C.
                     </p>
                   </div>
                   <button
@@ -2169,7 +2171,7 @@ export default function AdminDashboardInternal() {
                     onClick={handleAutoGroupSequential}
                     className="py-2 px-5 bg-eb-yellow text-black font-black uppercase text-[10px] tracking-wider rounded shadow transition-all hover:scale-[1.02]"
                   >
-                    Auto-Group Teams (Sequential)
+                    {selectedTournament?.type === 'Solo' ? 'Auto-Group Players' : 'Auto-Group Teams'} (Sequential)
                   </button>
                 </div>
 
@@ -2190,7 +2192,7 @@ export default function AdminDashboardInternal() {
                     return (
                       <div key={gName} className="p-3 bg-black/60 border border-eb-yellow/30 rounded">
                         <span className="font-black text-eb-yellow uppercase tracking-wider block border-b border-eb-yellow/30 pb-1.5 mb-2.5 text-[11px]">
-                          Group {gName} ({members.length} / 8 Teams)
+                          Group {gName} ({members.length} / 8 {selectedTournament?.type === 'Solo' ? 'Players' : 'Teams'})
                         </span>
                         {members.length > 0 ? (
                           <ul className="space-y-1.5 text-gray-400 font-mono text-[10px]">
@@ -2463,7 +2465,12 @@ export default function AdminDashboardInternal() {
                             </table>
                           </div>
                         ) : (
-                          <p className="text-[11px] text-tan font-bold">No teams from Group {selectedGroupMatch.matchup.split(' vs ').join(' or ')} are assigned groups yet.</p>
+                          <p className="text-[11px] text-tan font-bold">
+                            {selectedTournament?.type === 'Solo' 
+                              ? 'No registered players found in this tournament.' 
+                              : `No teams from Group ${selectedGroupMatch.matchup.split(' vs ').join(' or ')} are assigned groups yet.`
+                            }
+                          </p>
                         )}
 
                         <div className="flex justify-end gap-2">

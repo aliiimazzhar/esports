@@ -134,6 +134,63 @@ const ensureDbConnected = async (req, res, next) => {
 
 app.use(ensureDbConnected);
 
+const autoAllocateGroupsAndSeeds = async (eventId) => {
+  try {
+    const targetEvent = await Event.findById(eventId);
+    if (!targetEvent) return;
+
+    const now = new Date();
+    const adminDeadline = new Date(targetEvent.registrationDeadline);
+    const minHoursDeadline = new Date(new Date(targetEvent.matchStartTime).getTime() - 24 * 60 * 60 * 1000);
+    const finalDeadline = adminDeadline < minHoursDeadline ? adminDeadline : minHoursDeadline;
+
+    // If registration has ended
+    if (now > finalDeadline) {
+      // Check if there are approved registrations that don't have seed/group Stage details yet
+      const unallocated = await Registration.find({
+        eventId: targetEvent._id,
+        paymentStatus: 'Approved',
+        $or: [
+          { groupStageSeed: null },
+          { groupStageGroup: null }
+        ]
+      });
+
+      if (unallocated.length > 0) {
+        // Get all approved registrations sorted by createdAt
+        const approvedRegs = await Registration.find({
+          eventId: targetEvent._id,
+          paymentStatus: 'Approved'
+        }).sort({ createdAt: 1 });
+
+        for (let idx = 0; idx < approvedRegs.length; idx++) {
+          const reg = approvedRegs[idx];
+          let groupName = null;
+          let seedNum = idx + 1; // Team number is auto allotted on sequential basis
+
+          if (idx < 8) {
+            groupName = 'A';
+          } else if (idx < 16) {
+            groupName = 'B';
+          } else if (idx < 24) {
+            groupName = 'C';
+          } else {
+            const rem = idx % 3;
+            groupName = rem === 0 ? 'A' : rem === 1 ? 'B' : 'C';
+          }
+
+          await Registration.updateOne(
+            { _id: reg._id },
+            { $set: { groupStageSeed: seedNum, groupStageGroup: groupName } }
+          );
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Error auto-allocating groups & seeds:', err);
+  }
+};
+
 // Ensure uploads directory exists (use /tmp in serverless environment)
 const uploadsDir = process.env.VERCEL ? '/tmp' : path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) {
@@ -963,6 +1020,23 @@ app.get('/api/events/:eventId/group-stage/schedule', async (req, res) => {
   } catch (err) {
     console.error('Error fetching schedule:', err);
     res.status(500).json({ error: 'Failed to fetch schedule.' });
+  }
+});
+
+// Get all approved registrations (teams and player names) for a specific event (visible to players)
+app.get('/api/events/:eventId/registrations/approved', async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    
+    // Auto-allocate seeds and groups first if the deadline has passed
+    await autoAllocateGroupsAndSeeds(eventId);
+
+    const regs = await Registration.find({ eventId, paymentStatus: 'Approved' })
+      .select('registrationType trackingUid allInGameNames allCharacterIds groupStageSeed groupStageGroup');
+    res.json(regs);
+  } catch (err) {
+    console.error('Error fetching approved registrations for event:', err);
+    res.status(500).json({ error: 'Failed to retrieve registrations.' });
   }
 });
 

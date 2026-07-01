@@ -5,7 +5,7 @@ const groupStageMatchSchema = new mongoose.Schema({
   matchNumber: { type: Number, required: true },
   dayNumber: { type: Number, required: true, default: 1 },
   matchDate: { type: Date, required: true, default: Date.now },
-  matchup: { type: String, enum: ['A vs B', 'B vs C', 'A vs C'], required: true },
+  matchup: { type: String, required: true },
   map: { type: String, enum: ['Erangel', 'Miramar', 'Rondo'], required: true },
   roomId: { type: String, default: "" },
   roomPassword: { type: String, default: "" },

@@ -4,11 +4,23 @@ import { AppContext } from '../context/AppContext';
 import { ArrowLeft, Upload, FileImage, CheckCircle, Plus, Trash2, Info, AlertTriangle } from 'lucide-react';
 
 export default function Register() {
-  const { activeEvent, submitRegistration } = useContext(AppContext);
+  const { activeEvent, user, submitRegistration } = useContext(AppContext);
   const navigate = useNavigate();
 
   const [contactPhone, setContactPhone] = useState('');
-  const [uids, setUids] = useState(['']); // Start with 1 player ID field
+  const [transactionId, setTransactionId] = useState('');
+  const [uids, setUids] = useState(() => {
+    if (activeEvent?.type === 'Squad') {
+      return [user?.uid || '', '', '', ''];
+    }
+    return [user?.uid || ''];
+  });
+  const [inGameNames, setInGameNames] = useState(() => {
+    if (activeEvent?.type === 'Squad') {
+      return ['', '', '', ''];
+    }
+    return [''];
+  });
   const [screenshotFile, setScreenshotFile] = useState(null);
   const [screenshotPreview, setScreenshotPreview] = useState(null);
 
@@ -41,6 +53,24 @@ export default function Register() {
     );
   }
 
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-black flex flex-col items-center justify-center p-8 text-center">
+        <AlertTriangle className="w-16 h-16 text-eb-yellow mb-4 animate-bounce" />
+        <h2 className="text-2xl font-bold uppercase text-white">Sign In Required</h2>
+        <p className="text-gray-400 text-sm mt-2">You must be signed in to register for tournaments.</p>
+        <div className="flex gap-4 mt-6">
+          <Link to="/signin?redirect=register" className="px-6 py-2.5 rounded bg-eb-yellow text-black font-black uppercase text-xs tracking-wider transition-all duration-300 hover:scale-[1.03]">
+            Sign In
+          </Link>
+          <Link to="/signup" className="px-6 py-2.5 rounded bg-black border border-eb-yellow/30 text-white font-black uppercase text-xs tracking-wider transition-all duration-300 hover:scale-[1.03]">
+            Create Account
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   // Handle Character UID fields
   const handleUidChange = (index, value) => {
     const updated = [...uids];
@@ -55,14 +85,30 @@ export default function Register() {
     }
   };
 
+  const handleNameChange = (index, value) => {
+    const updated = [...inGameNames];
+    updated[index] = value;
+    setInGameNames(updated);
+    if (errors[`name_${index}`]) {
+      setErrors(prev => {
+        const next = { ...prev };
+        delete next[`name_${index}`];
+        return next;
+      });
+    }
+  };
+
   const addUidField = () => {
     setUids([...uids, '']);
+    setInGameNames([...inGameNames, '']);
   };
 
   const removeUidField = (index) => {
     if (uids.length > 1) {
-      const updated = uids.filter((_, i) => i !== index);
-      setUids(updated);
+      const updatedUids = uids.filter((_, i) => i !== index);
+      const updatedNames = inGameNames.filter((_, i) => i !== index);
+      setUids(updatedUids);
+      setInGameNames(updatedNames);
     }
   };
 
@@ -124,9 +170,13 @@ export default function Register() {
     const tempErrors = {};
 
     if (!contactPhone.trim()) {
-      tempErrors.contactPhone = 'Contact phone number is required';
+      tempErrors.contactPhone = 'WhatsApp phone number is required';
     } else if (contactPhone.trim().length < 8) {
-      tempErrors.contactPhone = 'Phone number is too short';
+      tempErrors.contactPhone = 'WhatsApp phone number is too short';
+    }
+
+    if (!transactionId.trim()) {
+      tempErrors.transactionId = 'Transaction ID (TxID) is required';
     }
 
     uids.forEach((uid, index) => {
@@ -134,6 +184,12 @@ export default function Register() {
         tempErrors[`uid_${index}`] = `Character ID ${index + 1} is required`;
       } else if (uid.trim().length < 4) {
         tempErrors[`uid_${index}`] = `PUBG Character ID must be at least 4 characters`;
+      }
+    });
+
+    inGameNames.forEach((name, index) => {
+      if (!name.trim()) {
+        tempErrors[`name_${index}`] = `In-game Name ${index + 1} is required`;
       }
     });
 
@@ -149,9 +205,13 @@ export default function Register() {
     setSubmitting(true);
 
     const formData = new FormData();
-    formData.append('contactPhoneNumber', contactPhone.trim());
-    formData.append('paymentScreenshot', screenshotFile);
+    formData.append('registrationType', activeEvent.type === 'Solo' ? 'Solo' : 'Team');
+    formData.append('whatsappNumber', contactPhone.trim());
+    formData.append('transactionId', transactionId.trim());
     formData.append('allCharacterIds', JSON.stringify(uids.map(u => u.trim())));
+    formData.append('allInGameNames', JSON.stringify(inGameNames.map(n => n.trim())));
+    formData.append('paymentScreenshot', screenshotFile);
+    formData.append('eventId', activeEvent._id);
 
     try {
       const res = await submitRegistration(formData);
@@ -250,7 +310,7 @@ export default function Register() {
                 {/* Contact Phone */}
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">
-                    Contact Phone Number
+                    WhatsApp Phone Number
                   </label>
                   <input
                     type="text"
@@ -260,10 +320,29 @@ export default function Register() {
                       if (errors.contactPhone) setErrors(prev => { const n = {...prev}; delete n.contactPhone; return n; });
                     }}
                     placeholder="e.g. 03001234567"
-                    className="pubg-input w-full"
+                    className="pubg-input w-full text-xs font-mono"
                     disabled={submitting}
                   />
                   {errors.contactPhone && <p className="text-tan text-[10px] font-bold mt-1">{errors.contactPhone}</p>}
+                </div>
+
+                {/* Transaction ID */}
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">
+                    Transaction ID (TxID)
+                  </label>
+                  <input
+                    type="text"
+                    value={transactionId}
+                    onChange={(e) => {
+                      setTransactionId(e.target.value);
+                      if (errors.transactionId) setErrors(prev => { const n = {...prev}; delete n.transactionId; return n; });
+                    }}
+                    placeholder="e.g. EasyPaisa or JazzCash TxID"
+                    className="pubg-input w-full text-xs font-mono"
+                    disabled={submitting}
+                  />
+                  {errors.transactionId && <p className="text-tan text-[10px] font-bold mt-1">{errors.transactionId}</p>}
                 </div>
 
                 {/* Character UIDs */}
@@ -272,45 +351,66 @@ export default function Register() {
                     <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
                       Registered Roster UIDs
                     </label>
-                    <button
-                      type="button"
-                      onClick={addUidField}
-                      className="px-2.5 py-1 bg-black border border-eb-yellow/20 hover:border-eb-yellow text-[9px] font-bold uppercase tracking-wider text-gray-400 hover:text-white flex items-center gap-1"
-                      disabled={submitting}
-                    >
-                      <Plus className="w-3 h-3" /> Add Slot
-                    </button>
+                    {activeEvent?.type !== 'Squad' && (
+                      <button
+                        type="button"
+                        onClick={addUidField}
+                        className="px-2.5 py-1 bg-black border border-eb-yellow/20 hover:border-eb-yellow text-[9px] font-bold uppercase tracking-wider text-gray-400 hover:text-white flex items-center gap-1"
+                        disabled={submitting}
+                      >
+                        <Plus className="w-3 h-3" /> Add Slot
+                      </button>
+                    )}
                   </div>
 
                   <div className="space-y-2.5">
                     {uids.map((uid, index) => (
-                      <div key={index} className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-bold text-orig-yellow w-6 text-right font-mono">
-                            {index === 0 ? 'KEY:' : `P${index + 1}:`}
+                      <div key={index} className="space-y-1 bg-[#12120e]/60 p-2.5 border border-white/5 rounded">
+                        <div className="flex items-center gap-1.5 mb-1.5 justify-between">
+                          <span className="text-[10px] font-black text-orig-yellow font-mono">
+                            {index === 0 ? 'TEAM LEADER (YOU)' : `PLAYER ${index + 1}`}
                           </span>
-                          <input
-                            type="text"
-                            value={uid}
-                            onChange={(e) => handleUidChange(index, e.target.value)}
-                            placeholder={index === 0 ? "First UID (Primary tracking search key)" : `Player ${index + 1} character UID`}
-                            className="pubg-input py-2 text-xs w-full font-mono"
-                            disabled={submitting}
-                          />
-                          {uids.length > 1 && (
+                          {uids.length > 1 && activeEvent?.type !== 'Squad' && (
                             <button
                               type="button"
                               onClick={() => removeUidField(index)}
-                              className="p-2 bg-black border border-eb-yellow/30 text-gray-500 hover:text-tan hover:border-tan"
+                              className="p-1 bg-black border border-eb-yellow/30 text-gray-500 hover:text-tan hover:border-tan rounded"
                               disabled={submitting}
                             >
-                              <Trash2 className="w-3.5 h-3.5" />
+                              <Trash2 className="w-3 h-3" />
                             </button>
                           )}
                         </div>
-                        {errors[`uid_${index}`] && (
-                          <p className="text-tan text-[10px] font-bold pl-8">{errors[`uid_${index}`]}</p>
-                        )}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          <div className="space-y-1">
+                            <input
+                              type="text"
+                              value={uid}
+                              onChange={(e) => handleUidChange(index, e.target.value)}
+                              placeholder="PUBG Character UID"
+                              className="pubg-input py-1.5 text-xs w-full font-mono"
+                              disabled={submitting || (index === 0 && !!user?.uid)}
+                              required
+                            />
+                            {errors[`uid_${index}`] && (
+                              <p className="text-tan text-[9px] font-bold">{errors[`uid_${index}`]}</p>
+                            )}
+                          </div>
+                          <div className="space-y-1">
+                            <input
+                              type="text"
+                              value={inGameNames[index] || ''}
+                              onChange={(e) => handleNameChange(index, e.target.value)}
+                              placeholder="PUBG In-game Name"
+                              className="pubg-input py-1.5 text-xs w-full font-sans"
+                              disabled={submitting}
+                              required
+                            />
+                            {errors[`name_${index}`] && (
+                              <p className="text-tan text-[9px] font-bold">{errors[`name_${index}`]}</p>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     ))}
                   </div>

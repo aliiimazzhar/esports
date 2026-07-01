@@ -21,6 +21,8 @@ export default function Dashboard() {
   // Schedules state per event: { [eventId]: scheduleMatches }
   const [schedules, setSchedules] = useState({});
   const [loadingSchedules, setLoadingSchedules] = useState(false);
+  const [eventRosters, setEventRosters] = useState({});
+  const [loadingRosters, setLoadingRosters] = useState(false);
 
   // Live timer tick to keep track of current time and automatically unlock lobby details
   const [now, setNow] = useState(new Date());
@@ -84,6 +86,32 @@ export default function Dashboard() {
     fetchAllSchedules();
   }, [registrations]);
 
+  // Fetch approved rosters (teams and player names) for all registered tournaments
+  useEffect(() => {
+    const fetchAllRosters = async () => {
+      if (registrations.length === 0) return;
+      setLoadingRosters(true);
+      const newRosters = {};
+      for (const reg of registrations) {
+        if (!reg.eventId?._id) continue;
+        if (newRosters[reg.eventId._id]) continue;
+        try {
+          const response = await fetch(`/api/events/${reg.eventId._id}/registrations/approved`);
+          if (response.ok) {
+            const data = await response.json();
+            newRosters[reg.eventId._id] = data;
+          }
+        } catch (err) {
+          console.error(`Error fetching roster for event ${reg.eventId._id}:`, err);
+        }
+      }
+      setEventRosters(newRosters);
+      setLoadingRosters(false);
+    };
+
+    fetchAllRosters();
+  }, [registrations]);
+
   const isLobbyOpen = (matchStartTime) => {
     if (!matchStartTime) return false;
     const matchTime = new Date(matchStartTime);
@@ -115,8 +143,10 @@ export default function Dashboard() {
   const getNextMatch = (reg, eventSchedule) => {
     if (!eventSchedule || eventSchedule.length === 0) return null;
     const myGroup = reg.groupStageGroup;
-    if (!myGroup) return null;
+    if (!myGroup && activeEvent?.type !== 'Solo') return null;
     const myMatches = eventSchedule.filter(m => {
+      if (activeEvent?.type === 'Solo') return true;
+      if (!myGroup) return false;
       return m.matchup.split(' vs ').map(g => g.trim()).includes(myGroup);
     });
     return myMatches
@@ -432,11 +462,13 @@ export default function Dashboard() {
                                     <th className="p-3">Map</th>
                                     <th className="p-3">Date/Time</th>
                                     <th className="p-3">Status</th>
+                                    <th className="p-3 text-right">Lobby Credentials</th>
                                   </tr>
                                 </thead>
                                 <tbody className="divide-y divide-eb-yellow/30 text-gray-300">
                                   {eventSchedule.map((m) => {
-                                    const isMyMatch = myGroup && m.matchup.split(' vs ').map(g => g.trim()).includes(myGroup);
+                                    const isMyMatch = activeEvent?.type === 'Solo' ? true : (myGroup && m.matchup.split(' vs ').map(g => g.trim()).includes(myGroup));
+                                    const lobbyActive = isLobbyOpen(m.matchDate);
                                     return (
                                       <tr key={m._id} className={`hover:bg-white/[0.01] transition-colors ${
                                         isMyMatch ? 'bg-eb-yellow/[0.01] border-l-2 border-eb-yellow' : ''
@@ -462,11 +494,87 @@ export default function Dashboard() {
                                             {m.isPlayed ? 'Played' : 'Scheduled'}
                                           </span>
                                         </td>
+                                        <td className="p-3 text-right">
+                                          {isMyMatch ? (
+                                            lobbyActive ? (
+                                              m.roomId ? (
+                                                <div className="font-mono text-[9px] text-gray-400 space-y-0.5">
+                                                  <div>ID: <span className="text-white font-bold">{m.roomId}</span></div>
+                                                  <div>Pass: <span className="text-white font-bold">{m.roomPassword}</span></div>
+                                                </div>
+                                              ) : (
+                                                <span className="text-gold text-[9px] font-bold animate-pulse">Lobby Opening...</span>
+                                              )
+                                            ) : (
+                                              <span className="text-gray-500 text-[9px]">Lobby opens 15m before</span>
+                                            )
+                                          ) : (
+                                            <span className="text-gray-600 text-[8px] uppercase tracking-wider font-bold">Locked</span>
+                                          )}
+                                        </td>
                                       </tr>
                                     );
                                   })}
                                 </tbody>
                               </table>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Groups & Roster Info */}
+                        {eventRosters[event._id] && eventRosters[event._id].length > 0 && (
+                          <div className="border-t border-eb-yellow/30 pt-5 space-y-4">
+                            <h4 className="text-xs font-black uppercase text-white tracking-widest flex items-center gap-1.5 font-mono">
+                              <Trophy className="w-4 h-4 text-eb-yellow animate-pulse" /> Tournament Groups & Roster
+                            </h4>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 font-sans">
+                              {['A', 'B', 'C'].map((gName) => {
+                                const groupTeams = eventRosters[event._id].filter(r => r.groupStageGroup === gName);
+                                return (
+                                  <div key={gName} className="bg-black/40 border border-eb-yellow/20 rounded p-3 space-y-3">
+                                    <div className="border-b border-eb-yellow/30 pb-1.5 flex justify-between items-center">
+                                      <span className="text-[10px] font-black text-eb-yellow uppercase tracking-widest font-mono">Group {gName}</span>
+                                      <span className="text-[8px] bg-white/5 px-1.5 py-0.5 rounded text-gray-400 font-mono font-bold">
+                                        {groupTeams.length} Teams
+                                      </span>
+                                    </div>
+                                    
+                                    {groupTeams.length > 0 ? (
+                                      <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
+                                        {groupTeams.map((t) => {
+                                          const isOurTeam = t.allCharacterIds.includes(user.uid);
+                                          return (
+                                            <div 
+                                              key={t._id} 
+                                              className={`p-2 rounded text-[10px] border transition-colors ${
+                                                isOurTeam 
+                                                  ? 'bg-eb-yellow/10 border-eb-yellow text-white' 
+                                                  : 'bg-white/[0.01] border-white/5 text-gray-400 hover:border-white/10'
+                                              }`}
+                                            >
+                                              <div className="flex justify-between items-center mb-1 font-bold">
+                                                <span className="uppercase text-white truncate max-w-[120px] font-mono">{t.trackingUid}</span>
+                                                <span className="font-mono text-eb-yellow text-[9px]">T#{t.groupStageSeed}</span>
+                                              </div>
+                                              
+                                              <div className="space-y-0.5 pl-1.5 border-l border-white/10 text-[9px] font-mono text-gray-500">
+                                                {t.allInGameNames?.map((n, idx) => (
+                                                  <div key={idx} className="truncate">
+                                                    P{idx+1}: <span className={t.allCharacterIds[idx] === user.uid ? 'text-eb-yellow font-bold' : 'text-gray-400'}>{n}</span>
+                                                  </div>
+                                                ))}
+                                              </div>
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                    ) : (
+                                      <p className="text-[9px] text-gray-550 italic">No teams assigned yet.</p>
+                                    )}
+                                  </div>
+                                );
+                              })}
                             </div>
                           </div>
                         )}

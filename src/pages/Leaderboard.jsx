@@ -79,7 +79,7 @@ export default function Leaderboard() {
   };
 
   useEffect(() => {
-    if (activeEvent && activeEvent.type === 'Squad') {
+    if (activeEvent && (activeEvent.type === 'Squad' || activeEvent.type === 'Solo')) {
       const fetchGroupStageData = async () => {
         setLoadingGS(true);
         try {
@@ -149,7 +149,7 @@ export default function Leaderboard() {
             )}
           </div>
 
-          {activeEvent?.type === 'Squad' && !isCustom && (
+          {(activeEvent?.type === 'Squad' || activeEvent?.type === 'Solo') && !isCustom && (
             <div className="grid grid-cols-3 gap-2 bg-[#12120e] p-1 border border-white/5 mb-4">
               <button
                 type="button"
@@ -284,7 +284,7 @@ export default function Leaderboard() {
                 </table>
               </div>
             </div>
-          ) : activeEvent?.type === 'Squad' ? (
+          ) : (activeEvent?.type === 'Squad' || activeEvent?.type === 'Solo') ? (
             <div>
               {viewTab === 'overall' && (
                 <div className="space-y-4">
@@ -296,8 +296,8 @@ export default function Leaderboard() {
                         <thead>
                           <tr className="bg-black text-gray-400 font-black uppercase tracking-wider border-b border-eb-yellow/30 text-[10px]">
                             <th className="p-4 text-center w-16">Rank</th>
-                            <th className="p-4">Squad / Leader</th>
-                            <th className="p-4">Roster Character IDs</th>
+                            <th className="p-4">{activeEvent?.type === 'Solo' ? 'Player Name' : 'Squad / Leader'}</th>
+                            <th className="p-4">{activeEvent?.type === 'Solo' ? 'Character UID' : 'Roster Character IDs'}</th>
                             <th className="p-4 text-center">Group</th>
                             <th className="p-4 text-center">Matches</th>
                             <th className="p-4 text-center">Kills</th>
@@ -324,13 +324,17 @@ export default function Leaderboard() {
                                 </td>
                                 <td className="p-4 font-bold text-white uppercase">{row.allInGameNames?.[0] || 'Unknown'}</td>
                                 <td className="p-4 text-[10px] text-gray-500 font-mono">
-                                  <div className="grid grid-cols-2 gap-x-2 gap-y-0.5">
-                                    {row.allInGameNames?.map((name, pIdx) => (
-                                      <div key={pIdx} className="truncate">
-                                        P{pIdx+1}: <span className="text-gray-300 font-bold">{name}</span> <span className="text-gray-600">({row.allCharacterIds?.[pIdx] || 'N/A'})</span> - <strong className="text-eb-yellow">{row.playerKills?.[pIdx] || 0} K</strong>
-                                      </div>
-                                    ))}
-                                  </div>
+                                  {activeEvent?.type === 'Solo' ? (
+                                    <span className="text-gray-300 font-bold">{row.allCharacterIds?.[0] || 'N/A'}</span>
+                                  ) : (
+                                    <div className="grid grid-cols-2 gap-x-2 gap-y-0.5">
+                                      {row.allInGameNames?.map((name, pIdx) => (
+                                        <div key={pIdx} className="truncate">
+                                          P{pIdx+1}: <span className="text-gray-300 font-bold">{name}</span> <span className="text-gray-600">({row.allCharacterIds?.[pIdx] || 'N/A'})</span> - <strong className="text-eb-yellow">{row.playerKills?.[pIdx] || 0} K</strong>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
                                 </td>
                                 <td className="p-4 text-center font-mono font-semibold text-eb-yellow">Group {row.groupStageGroup || 'N/A'}</td>
                                 <td className="p-4 text-center font-mono">{row.matchesPlayed || 0}</td>
@@ -360,7 +364,7 @@ export default function Leaderboard() {
                       <div key={gLetter} className="p-4 bg-[#12120e] border border-eb-yellow/20 hover:border-eb-yellow/30 rounded space-y-3">
                         <div className="border-b border-eb-yellow/30 pb-2 flex justify-between items-center">
                           <h4 className="text-sm font-black text-white uppercase tracking-wider">Group {gLetter}</h4>
-                          <span className="text-[9px] text-gray-500 font-bold uppercase">{groupRegs.length} Teams Slot</span>
+                          <span className="text-[9px] text-gray-500 font-bold uppercase">{groupRegs.length} {activeEvent?.type === 'Solo' ? 'Players' : 'Teams'} Slot</span>
                         </div>
                         {groupRegs.length > 0 ? (
                           <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
@@ -368,15 +372,21 @@ export default function Leaderboard() {
                               <div key={reg._id} className="p-2.5 bg-black border border-white/5 rounded text-xs space-y-1">
                                 <div className="flex justify-between text-white font-bold">
                                   <span>{rIdx + 1}. {reg.allInGameNames?.[0] || 'Unknown'}</span>
-                                  <span className="text-[9px] text-eb-yellow font-mono font-medium">#{reg.teamNumber}</span>
+                                  {activeEvent?.type !== 'Solo' && <span className="text-[9px] text-eb-yellow font-mono font-medium">#{reg.teamNumber}</span>}
                                 </div>
-                                <div className="text-[9px] text-gray-500 font-mono space-y-0.5">
-                                  {reg.allInGameNames?.map((name, pIdx) => (
-                                    <div key={pIdx} className="truncate">
-                                      P{pIdx+1}: {name} ({reg.allCharacterIds?.[pIdx]})
-                                    </div>
-                                  ))}
-                                </div>
+                                {activeEvent?.type === 'Solo' ? (
+                                  <div className="text-[9px] text-gray-500 font-mono">
+                                    UID: {reg.allCharacterIds?.[0] || 'N/A'}
+                                  </div>
+                                ) : (
+                                  <div className="text-[9px] text-gray-500 font-mono space-y-0.5">
+                                    {reg.allInGameNames?.map((name, pIdx) => (
+                                      <div key={pIdx} className="truncate">
+                                        P{pIdx+1}: {name} ({reg.allCharacterIds?.[pIdx]})
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
                               </div>
                             ))}
                           </div>
