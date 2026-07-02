@@ -6,7 +6,7 @@ const eventSchema = new mongoose.Schema({
   teamEntryFee: { type: Number, required: true },
   numberOfDays: { type: Number, default: 1 },
   isActive: { type: Boolean, default: true }, // Setting a new event to true flags all others to false
-  status: { type: String, enum: ['upcoming', 'active', 'live', 'ended'], default: 'active' },
+  status: { type: String, enum: ['upcomming', 'open', 'ongoing', 'ended'], default: 'open' },
   type: { type: String, enum: ['Solo', 'Squad'], default: 'Squad' },
   description: { type: String, default: "" },
   

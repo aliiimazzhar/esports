@@ -33,16 +33,19 @@ export default function Register() {
   const isSoloTournament = activeEvent?.type === 'Solo';
   const limit = isSoloTournament ? 100 : 96;
   const isFull = activeEvent && activeEvent.registeredPlayersCount >= limit;
+  const isNotOpen = activeEvent && activeEvent.status !== 'open';
 
-  if (!activeEvent || isFull) {
+  if (!activeEvent || isFull || isNotOpen) {
     return (
       <div className="min-h-screen bg-black flex flex-col items-center justify-center p-8 text-center">
         <AlertTriangle className="w-16 h-16 text-eb-yellow mb-4 animate-bounce" />
         <h2 className="text-2xl font-bold uppercase text-white">
-          {!activeEvent ? 'Registration Closed' : 'Registration Full'}
+          {isNotOpen ? 'Registration Closed' : !activeEvent ? 'Registration Closed' : 'Registration Full'}
         </h2>
         <p className="text-gray-400 text-sm mt-2">
-          {!activeEvent 
+          {isNotOpen 
+            ? `Registration for "${activeEvent.title}" is closed because the tournament is not currently open for registration.`
+            : !activeEvent 
             ? 'No active tournament is currently open for registration.' 
             : `All slots for "${activeEvent.title}" have been filled (${activeEvent.registeredPlayersCount}/${limit} players registered).`}
         </p>
@@ -179,9 +182,12 @@ export default function Register() {
       tempErrors.transactionId = 'Transaction ID (TxID) is required';
     }
 
+    const numericRegex = /^\d+$/;
     uids.forEach((uid, index) => {
       if (!uid.trim()) {
         tempErrors[`uid_${index}`] = `Character ID ${index + 1} is required`;
+      } else if (!numericRegex.test(uid.trim())) {
+        tempErrors[`uid_${index}`] = `PUBG Character ID must contain numbers only`;
       } else if (uid.trim().length < 4) {
         tempErrors[`uid_${index}`] = `PUBG Character ID must be at least 4 characters`;
       }

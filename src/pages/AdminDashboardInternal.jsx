@@ -38,6 +38,7 @@ export default function AdminDashboardInternal() {
   // Dashboard Tabs: 'registrations' | 'tournaments' | 'leaderboard'
   const [activeTab, setActiveTab] = useState('registrations');
   const [subTabRegistrations, setSubTabRegistrations] = useState('receipts'); // 'receipts' | 'proofs'
+  const [subTabTournaments, setSubTabTournaments] = useState('solo'); // 'solo' | 'squad'
   
   // Popup Modal states
   const [showModal, setShowModal] = useState(false);
@@ -53,7 +54,7 @@ export default function AdminDashboardInternal() {
   const [deploySuccess, setDeploySuccess] = useState('');
   const [deployError, setDeployError] = useState('');
   const [deploying, setDeploying] = useState(false);
-  const [tourneyStatus, setTourneyStatus] = useState('active');
+  const [tourneyStatus, setTourneyStatus] = useState('open');
   const [tourneyType, setTourneyType] = useState('Squad');
   const [map, setMap] = useState('Erangel');
   const [description, setDescription] = useState('');
@@ -525,12 +526,12 @@ export default function AdminDashboardInternal() {
   const handleAddClick = () => {
     setEditingEvent(null);
     setTitle('');
-    setSoloEntryFee(1500);
-    setTeamEntryFee(6000);
+    setSoloEntryFee('');
+    setTeamEntryFee('');
     setNumberOfDays(1);
     setDeadline('');
     setStartTime('');
-    setTourneyStatus('active');
+    setTourneyStatus('open');
     setTourneyType('Squad');
     setMap('Erangel');
     setDescription('');
@@ -549,7 +550,7 @@ export default function AdminDashboardInternal() {
     setNumberOfDays(evt.numberOfDays || 1);
     setDeadline(toDatetimeLocal(evt.registrationDeadline));
     setStartTime(toDatetimeLocal(evt.matchStartTime));
-    setTourneyStatus(evt.status || 'active');
+    setTourneyStatus(evt.status || 'open');
     setTourneyType(evt.type || 'Squad');
     setMap(evt.map || 'Erangel');
     setDescription(evt.description || '');
@@ -1394,6 +1395,30 @@ export default function AdminDashboardInternal() {
                 </button>
               </div>
 
+              {/* Sub-tabs header for Tournaments */}
+              <div className="flex gap-4 border-b border-eb-yellow/30 pb-3 overflow-x-auto whitespace-nowrap">
+                <button
+                  onClick={() => setSubTabTournaments('solo')}
+                  className={`pb-1 text-xs font-black uppercase tracking-wider transition-colors ${
+                    subTabTournaments === 'solo'
+                      ? 'text-eb-yellow border-b-2 border-eb-yellow font-black'
+                      : 'text-gray-500 hover:text-white'
+                  }`}
+                >
+                  Solo Tournaments
+                </button>
+                <button
+                  onClick={() => setSubTabTournaments('squad')}
+                  className={`pb-1 text-xs font-black uppercase tracking-wider transition-colors ${
+                    subTabTournaments === 'squad'
+                      ? 'text-eb-yellow border-b-2 border-eb-yellow font-black'
+                      : 'text-gray-500 hover:text-white'
+                  }`}
+                >
+                  Squad Tournaments
+                </button>
+              </div>
+
               {deploySuccess && (
                 <div className="p-3 bg-[#10b981]/15 text-[#10b981] border border-[#10b981]/30 rounded-sm text-xs font-semibold animate-fadeIn">
                   {deploySuccess}
@@ -1417,57 +1442,59 @@ export default function AdminDashboardInternal() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-eb-yellow/30 text-gray-300 font-medium">
-                      {events && events.length > 0 ? (
-                        events.map((evt) => (
-                          <tr key={evt._id} className="hover:bg-black/40 transition-colors">
-                            <td className="p-4 font-bold text-white uppercase">{evt.title}</td>
-                            <td className="p-4 font-mono uppercase text-eb-yellow text-[11px]">{evt.map || 'Erangel'}</td>
-                            <td className="p-4">
-                              <span className="px-2 py-0.5 rounded-sm bg-black border border-eb-yellow/20 text-gold text-[9px] font-black uppercase tracking-wider font-mono">
-                                {evt.type || 'Squad'}
-                              </span>
-                            </td>
-                            <td className="p-4">
-                              <span className={`px-2 py-0.5 rounded-sm font-black text-[9px] uppercase tracking-wider ${
-                                evt.status === 'live'
-                                  ? 'bg-red-600 text-white animate-pulse'
-                                  : evt.status === 'active'
-                                  ? 'bg-eb-yellow text-black'
-                                  : 'bg-gray-800 text-gray-400'
-                              }`}>
-                                {evt.status === 'active' ? 'open' : evt.status}
-                              </span>
-                            </td>
-                            <td className="p-4 font-mono text-[11px]">
-                              S: PKR {evt.soloEntryFee?.toLocaleString()} <br/>
-                              T: PKR {evt.teamEntryFee?.toLocaleString()}
-                            </td>
-                            <td className="p-4 text-center font-mono">{evt.numberOfDays || 1}</td>
-                            <td className="p-4 font-mono text-[11px]">
-                              {new Date(evt.matchStartTime).toLocaleDateString()} {new Date(evt.matchStartTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </td>
-                            <td className="p-4 text-right space-x-2">
-                              <button
-                                onClick={() => handleEditClick(evt)}
-                                className="p-1.5 bg-eb-yellow hover:scale-[1.05] text-black font-black uppercase text-[10px] rounded inline-flex items-center gap-1 transition-all duration-300"
-                                title="Edit Tournament"
-                              >
-                                <Edit className="w-3.5 h-3.5" /> Edit
-                              </button>
-                              <button
-                                onClick={() => handleDeleteEvent(evt._id)}
-                                className="p-1.5 bg-tan hover:scale-[1.05] text-white font-black uppercase text-[10px] rounded inline-flex items-center gap-1 transition-all duration-300"
-                                title="Delete Tournament"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" /> Delete
-                              </button>
-                            </td>
-                          </tr>
-                        ))
+                      {events && events.length > 0 && events.filter((evt) => (subTabTournaments === 'solo' ? evt.type === 'Solo' : evt.type === 'Squad')).length > 0 ? (
+                        events
+                          .filter((evt) => (subTabTournaments === 'solo' ? evt.type === 'Solo' : evt.type === 'Squad'))
+                          .map((evt) => (
+                            <tr key={evt._id} className="hover:bg-black/40 transition-colors">
+                              <td className="p-4 font-bold text-white uppercase">{evt.title}</td>
+                              <td className="p-4 font-mono uppercase text-eb-yellow text-[11px]">{evt.map || 'Erangel'}</td>
+                              <td className="p-4">
+                                <span className="px-2 py-0.5 rounded-sm bg-black border border-eb-yellow/20 text-gold text-[9px] font-black uppercase tracking-wider font-mono">
+                                  {evt.type || 'Squad'}
+                                </span>
+                              </td>
+                              <td className="p-4">
+                                <span className={`px-2 py-0.5 rounded-sm font-black text-[9px] uppercase tracking-wider ${
+                                  evt.status === 'ongoing'
+                                    ? 'bg-red-600 text-white animate-pulse'
+                                    : evt.status === 'open'
+                                    ? 'bg-eb-yellow text-black'
+                                    : 'bg-gray-800 text-gray-400'
+                                }`}>
+                                  {evt.status === 'upcomming' ? 'upcoming' : evt.status}
+                                </span>
+                              </td>
+                              <td className="p-4 font-mono text-[11px]">
+                                S: PKR {evt.soloEntryFee?.toLocaleString()} <br/>
+                                T: PKR {evt.teamEntryFee?.toLocaleString()}
+                              </td>
+                              <td className="p-4 text-center font-mono">{evt.numberOfDays || 1}</td>
+                              <td className="p-4 font-mono text-[11px]">
+                                {new Date(evt.matchStartTime).toLocaleDateString()} {new Date(evt.matchStartTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </td>
+                              <td className="p-4 text-right space-x-2">
+                                <button
+                                  onClick={() => handleEditClick(evt)}
+                                  className="p-1.5 bg-eb-yellow hover:scale-[1.05] text-black font-black uppercase text-[10px] rounded inline-flex items-center gap-1 transition-all duration-300"
+                                  title="Edit Tournament"
+                                >
+                                  <Edit className="w-3.5 h-3.5" /> Edit
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteEvent(evt._id)}
+                                  className="p-1.5 bg-tan hover:scale-[1.05] text-white font-black uppercase text-[10px] rounded inline-flex items-center gap-1 transition-all duration-300"
+                                  title="Delete Tournament"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" /> Delete
+                                </button>
+                              </td>
+                            </tr>
+                          ))
                       ) : (
                         <tr>
-                          <td colSpan="6" className="text-center p-12 text-gray-500 font-semibold">
-                            No tournaments configured. Click "Add Tournament" to deploy.
+                          <td colSpan="8" className="text-center p-12 text-gray-500 font-semibold">
+                            No {subTabTournaments === 'solo' ? 'Solo' : 'Squad'} tournaments configured. Click "Add Tournament" to deploy.
                           </td>
                         </tr>
                       )}
@@ -1530,29 +1557,31 @@ export default function AdminDashboardInternal() {
 
                       {/* Reg Fee & Status */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="space-y-1">
-                          <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">Solo Registration Fee (PKR)</label>
-                          <input
-                            type="number"
-                            min="0"
-                            value={soloEntryFee}
-                            onChange={(e) => setSoloEntryFee(Number(e.target.value))}
-                            className="pubg-input w-full font-mono text-xs"
-                            required
-                          />
-                        </div>
-
-                        <div className="space-y-1">
-                          <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">Team Registration Fee (PKR)</label>
-                          <input
-                            type="number"
-                            min="0"
-                            value={teamEntryFee}
-                            onChange={(e) => setTeamEntryFee(Number(e.target.value))}
-                            className="pubg-input w-full font-mono text-xs"
-                            required
-                          />
-                        </div>
+                        {tourneyType === 'Solo' ? (
+                          <div className="space-y-1 w-full col-span-2">
+                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">Solo Registration Fee (PKR)</label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={soloEntryFee}
+                              onChange={(e) => setSoloEntryFee(e.target.value === '' ? '' : Number(e.target.value))}
+                              className="pubg-input w-full font-mono text-xs"
+                              required
+                            />
+                          </div>
+                        ) : (
+                          <div className="space-y-1 w-full col-span-2">
+                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">Team Registration Fee (PKR)</label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={teamEntryFee}
+                              onChange={(e) => setTeamEntryFee(e.target.value === '' ? '' : Number(e.target.value))}
+                              className="pubg-input w-full font-mono text-xs"
+                              required
+                            />
+                          </div>
+                        )}
                       </div>
 
                       {/* Number of Days & Status */}
@@ -1563,7 +1592,7 @@ export default function AdminDashboardInternal() {
                             type="number"
                             min="1"
                             value={numberOfDays}
-                            onChange={(e) => setNumberOfDays(Number(e.target.value))}
+                            onChange={(e) => setNumberOfDays(e.target.value === '' ? '' : Number(e.target.value))}
                             className="pubg-input w-full font-mono text-xs"
                             required
                           />
@@ -1576,15 +1605,15 @@ export default function AdminDashboardInternal() {
                             onChange={(e) => setTourneyStatus(e.target.value)}
                             className="pubg-input w-full text-xs bg-black cursor-pointer"
                           >
-                            <option value="active">Active (Registration Open)</option>
-                            <option value="upcoming">Upcoming (More Events List)</option>
-                            <option value="live">Live (Currently Played)</option>
+                            <option value="open">Open (Registration Open)</option>
+                            <option value="upcomming">Upcoming (More Events List)</option>
+                            <option value="ongoing">Ongoing (Currently Played)</option>
                             <option value="ended">Ended (Completed)</option>
                           </select>
                         </div>
                       </div>
 
-                      {/* Deadline & Match Timing */}
+                      {/* Deadline & Tournament Start Date */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-1">
                           <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">Registration Deadline</label>
@@ -1600,7 +1629,7 @@ export default function AdminDashboardInternal() {
                         </div>
 
                         <div className="space-y-1">
-                          <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">Match Timing</label>
+                          <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">Tournament Start Date</label>
                           <input
                             type="datetime-local"
                             value={startTime}

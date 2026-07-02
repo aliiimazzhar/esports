@@ -72,6 +72,12 @@ export default function RegisterModal({ isOpen, onClose, eventId }) {
 
   if (!isOpen || !activeEvent) return null;
 
+  const isSoloTournament = activeEvent.type === 'Solo';
+  const limit = isSoloTournament ? 100 : 96;
+  const isFull = activeEvent.registeredPlayersCount >= limit;
+  const deadlinePassed = activeEvent.registrationDeadline && new Date() > new Date(activeEvent.registrationDeadline);
+  const isRegClosed = activeEvent.status !== 'open' || deadlinePassed || isFull;
+
   // Add/remove player slots for team
   const addPlayerSlot = () => {
     setTeamPlayers([...teamPlayers, { characterId: '', inGameName: '' }]);
@@ -127,9 +133,8 @@ export default function RegisterModal({ isOpen, onClose, eventId }) {
   // Form submit
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const deadlineTime = new Date(new Date(activeEvent.matchStartTime).getTime() - 24 * 60 * 60 * 1000);
-    if (new Date() > deadlineTime) {
-      setErrors({ submit: 'Registrations are closed. Registration stops 24 hours before the match starts.' });
+    if (isRegClosed) {
+      setErrors({ submit: 'Registrations are closed for this tournament.' });
       return;
     }
     const tempErrors = {};
@@ -496,12 +501,12 @@ export default function RegisterModal({ isOpen, onClose, eventId }) {
               {/* Submit Button */}
               <button
                 type="submit"
-                disabled={submitting}
+                disabled={submitting || isRegClosed}
                 className={`w-full py-2.5 text-black font-black uppercase text-xs tracking-widest transition-all duration-300 ${
-                  submitting ? 'bg-gray-900 text-gray-650 cursor-wait border border-eb-yellow/20' : 'bg-eb-yellow hover:scale-[1.01]'
+                  submitting || isRegClosed ? 'bg-gray-900 text-gray-650 cursor-not-allowed border border-eb-yellow/20' : 'bg-eb-yellow hover:scale-[1.01]'
                 }`}
               >
-                {submitting ? 'Uploading to cloud...' : 'Register & Upload Slip'}
+                {isRegClosed ? 'Registration Closed' : submitting ? 'Uploading to cloud...' : 'Register & Upload Slip'}
               </button>
 
             </form>

@@ -35,6 +35,13 @@ export default function TournamentDetail() {
   const platformFee = 75;
   const totalAmount = tournament.entryFee + platformFee;
 
+  const tournamentRegistrations = registrations.filter(r => r.tournamentId === tournament.id && r.status !== 'Rejected');
+  const registeredPlayersCount = tournamentRegistrations.reduce((acc, r) => acc + (r.allCharacterIds || []).length, 0);
+  const limit = tournament.type === 'Solo' ? 100 : 96;
+  const isFull = registeredPlayersCount >= limit;
+  const deadlinePassed = tournament.registrationDeadline && new Date() > new Date(tournament.registrationDeadline);
+  const isRegClosed = tournament.status !== 'open' || deadlinePassed || isFull;
+
   const isTeamRegistered = (teamId) => {
     return registrations.some(r => r.tournamentId === tournament.id && r.teamId === teamId && r.status !== 'Rejected');
   };
@@ -54,6 +61,10 @@ export default function TournamentDetail() {
 
   const handleProceedToPayment = (e) => {
     e.preventDefault();
+    if (isRegClosed) {
+      alert('Registration is closed for this tournament.');
+      return;
+    }
     let finalTeamId = selectedTeamId;
 
     if (registrationMode === 'create') {
@@ -64,9 +75,12 @@ export default function TournamentDetail() {
         errors.quickTeamName = 'Squad name must be at least 3 characters';
       }
 
+      const numericRegex = /^\d+$/;
       quickMembers.forEach((m, idx) => {
         if (!m.trim()) {
           errors[`member_${idx}`] = `Player ${idx + 1} PUBG ID is required`;
+        } else if (!numericRegex.test(m.trim())) {
+          errors[`member_${idx}`] = `Player ${idx + 1} PUBG ID must contain numbers only`;
         } else if (m.trim().length < 4) {
           errors[`member_${idx}`] = `PUBG ID must be at least 4 characters`;
         }
@@ -114,11 +128,11 @@ export default function TournamentDetail() {
             <div className="pubg-hud-panel p-6 overflow-hidden">
               <div className="flex items-center gap-2 mb-3">
                 <span className={`px-2.5 py-0.5 text-[9px] font-black uppercase tracking-wider ${
-                  tournament.status === 'live' 
+                  tournament.status === 'ongoing' 
                     ? 'bg-tan text-white animate-pulse' 
                     : 'bg-eb-yellow text-black'
                 }`}>
-                  {tournament.status}
+                  {tournament.status === 'upcomming' ? 'upcoming' : tournament.status}
                 </span>
                 <span className="text-gray-500 text-[10px] font-black uppercase tracking-widest">PUBG Mobile Arena</span>
               </div>
@@ -327,14 +341,14 @@ export default function TournamentDetail() {
               {/* Submit CTA */}
               <button
                 onClick={handleProceedToPayment}
-                disabled={registrationMode === 'select' && (!selectedTeamId || isTeamRegistered(selectedTeamId))}
+                disabled={(registrationMode === 'select' && (!selectedTeamId || isTeamRegistered(selectedTeamId))) || isRegClosed}
                 className={`w-full py-3 text-black font-black uppercase text-xs tracking-widest transition-all duration-300 ${
-                  registrationMode === 'select' && (!selectedTeamId || isTeamRegistered(selectedTeamId))
+                  (registrationMode === 'select' && (!selectedTeamId || isTeamRegistered(selectedTeamId))) || isRegClosed
                     ? 'bg-gray-950 text-gray-600 cursor-not-allowed border border-eb-yellow/30'
                     : 'bg-eb-yellow hover:bg-gold hover:scale-[1.02] hover:shadow-glow-yellow'
                 }`}
               >
-                Proceed to Checkout
+                {isRegClosed ? 'Registration Closed' : 'Proceed to Checkout'}
               </button>
 
             </div>

@@ -285,7 +285,7 @@ export default function Dashboard() {
                           PAYMENT: {reg.paymentStatus}
                         </span>
                         <span className="px-2.5 py-0.5 text-[8px] font-black uppercase bg-eb-yellow/10 text-eb-yellow border border-eb-yellow/20">
-                          {event.status === 'active' ? 'OPEN' : event.status?.toUpperCase()}
+                          {event.status === 'open' ? 'OPEN' : event.status === 'upcomming' ? 'UPCOMMING' : event.status === 'ongoing' ? 'ONGOING' : event.status?.toUpperCase()}
                         </span>
                       </div>
                     </div>

@@ -45,7 +45,9 @@ export default function Home() {
   };
 
   const isRegistrationClosed = (event) => {
-    if (!event || !event.matchStartTime) return false;
+    if (!event) return false;
+    if (event.status !== 'open') return true;
+    if (!event.matchStartTime) return false;
     const start = new Date(event.matchStartTime);
     const deadline = new Date(start.getTime() - 24 * 60 * 60 * 1000);
     return new Date() > deadline;
@@ -113,9 +115,9 @@ export default function Home() {
   };
 
   const getStatusTag = (status) => {
-    if (status === 'active') return 'OPEN';
-    if (status === 'upcoming') return 'UPCOMING';
-    if (status === 'live') return 'LIVE';
+    if (status === 'open') return 'OPEN';
+    if (status === 'upcomming') return 'UPCOMMING';
+    if (status === 'ongoing') return 'ONGOING';
     if (status === 'ended') return 'ENDED';
     return status?.toUpperCase() || '';
   };
@@ -129,18 +131,18 @@ export default function Home() {
     );
   }
 
-  // Filter & Sort Tournaments: active events first, then live, then upcoming
+  // Filter & Sort Tournaments: open events first, then ongoing, then upcomming
   const sortTournaments = (a, b) => {
-    const statusOrder = { 'active': 1, 'live': 2, 'upcoming': 3, 'ended': 4 };
+    const statusOrder = { 'open': 1, 'ongoing': 2, 'upcomming': 3, 'ended': 4 };
     return (statusOrder[a.status] || 99) - (statusOrder[b.status] || 99);
   };
 
   const soloTournaments = events
-    .filter((evt) => evt.type === 'Solo' && (evt.status === 'active' || evt.status === 'upcoming' || evt.status === 'live'))
+    .filter((evt) => evt.type === 'Solo' && (evt.status === 'open' || evt.status === 'upcomming' || evt.status === 'ongoing'))
     .sort(sortTournaments);
 
   const squadTournaments = events
-    .filter((evt) => evt.type === 'Squad' && (evt.status === 'active' || evt.status === 'upcoming' || evt.status === 'live'))
+    .filter((evt) => evt.type === 'Squad' && (evt.status === 'open' || evt.status === 'upcomming' || evt.status === 'ongoing'))
     .sort(sortTournaments);
 
   const completedTournaments = events.filter((evt) => evt.status === 'ended');
@@ -205,8 +207,8 @@ export default function Home() {
       <section id="tournaments-section" className="py-12 px-4 md:px-8 max-w-7xl mx-auto space-y-16">
 
         {/* LIVE TOURNAMENT SECTION (If exists) */}
-        {events.find(evt => evt.status === 'live') && (() => {
-          const liveEvent = events.find(evt => evt.status === 'live');
+        {events.find(evt => evt.status === 'ongoing') && (() => {
+          const liveEvent = events.find(evt => evt.status === 'ongoing');
           return (
             <div className="pubg-hud-panel p-6 space-y-5 animate-slideInLeft border-2 border-red-500 shadow-glow-yellow-sm">
               <div className="flex items-center justify-between border-b border-eb-yellow/30 pb-3">
@@ -220,14 +222,14 @@ export default function Home() {
                   </h2>
                 </div>
                 <span className="px-2.5 py-1 text-[9px] font-black uppercase bg-red-600 text-white select-none tracking-wider border border-red-500 animate-pulse">
-                  MATCH LIVE
+                  MATCH ONGOING
                 </span>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
                 <div className="space-y-3 text-xs">
                   <p className="text-gray-400 font-medium">
-                    This tournament is currently live and matches are being contested in the battlegrounds. Registration is closed.
+                    This tournament is currently ongoing and matches are being contested in the battlegrounds. Registration is closed.
                   </p>
                   <div className="p-3 border-l-4 border-eb-yellow bg-eb-yellow/5 space-y-1">
                     <span className="text-[9px] text-gray-400 uppercase font-black tracking-wider block">Match Timing</span>

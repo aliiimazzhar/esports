@@ -290,9 +290,28 @@ const registrationLimiter = rateLimit({
    PUBLIC & PLAYER ENDPOINTS
    ========================================================================== */
 
+// Helper function to auto-transition expired open events to ongoing
+async function checkAndTransitionExpiredEvents() {
+  try {
+    const now = new Date();
+    const expiredEvents = await Event.find({ status: 'open', registrationDeadline: { $lt: now } });
+    for (const event of expiredEvents) {
+      event.status = 'ongoing';
+      await event.save();
+      console.log(`Auto-transitioned tournament "${event.title}" status from open to ongoing (registration deadline passed).`);
+    }
+  } catch (err) {
+    console.error('Error auto-transitioning open events:', err);
+  }
+}
+
+// Start background task check every 60 seconds
+setInterval(checkAndTransitionExpiredEvents, 60000);
+
 // 1. Get the current active event
 app.get('/api/events/active', async (req, res) => {
   try {
+    await checkAndTransitionExpiredEvents();
     const activeEvent = await Event.findOne({ isActive: true });
     if (!activeEvent) {
       return res.status(404).json({ message: 'No active tournament event found' });
@@ -320,8 +339,9 @@ app.get('/api/events/active', async (req, res) => {
 // 1.2 Get dynamic leaderboard for the active event
 app.get('/api/events/active/leaderboard', async (req, res) => {
   try {
+    await checkAndTransitionExpiredEvents();
     // FIX 10: Use status field instead of isActive alone
-    const activeEvent = await Event.findOne({ status: { $in: ['active', 'live'] } });
+    const activeEvent = await Event.findOne({ status: { $in: ['open', 'ongoing'] } });
     if (!activeEvent) {
       return res.status(404).json({ error: 'No active tournament found.' });
     }
@@ -366,6 +386,7 @@ app.get('/api/events/active/leaderboard', async (req, res) => {
 // 1.5 Get all events (upcoming, active, live, ended)
 app.get('/api/events/upcoming', async (req, res) => {
   try {
+    await checkAndTransitionExpiredEvents();
     const upcomingEvents = await Event.find().sort({ matchStartTime: 1 });
     res.json(upcomingEvents);
   } catch (err) {
@@ -435,7 +456,7 @@ app.post('/api/registrations', registrationLimiter, upload.single('paymentScreen
       if (!targetEvent) {
         return res.status(404).json({ error: 'Tournament not found.' });
       }
-      if (targetEvent.status === 'ended' || targetEvent.status === 'live') {
+      if (targetEvent.status !== 'open') {
         return res.status(400).json({ error: 'Registrations are closed for this tournament.' });
       }
     } else {
@@ -718,9 +739,16 @@ app.post('/api/admin/events', requireAdmin, async (req, res) => {
       return res.status(400).json({ error: 'Missing tournament parameter entries.' });
     }
 
-    const newStatus = status || 'active';
+    const newStatus = status || 'open';
     // FIX 10: Sync isActive from status
-    const newIsActive = newStatus === 'active' || newStatus === 'live';
+    const newIsActive = newStatus === 'open' || newStatus === 'ongoing';
+
+    if (status === 'ongoing') {
+      const existingOngoing = await Event.findOne({ status: 'ongoing' });
+      if (existingOngoing) {
+        return res.status(400).json({ error: `Cannot create tournament with ongoing status. Tournament "${existingOngoing.title}" is already ongoing. Only one tournament can be ongoing at a time.` });
+      }
+    }
 
     const newEvent = new Event({
       title,
@@ -745,15 +773,10 @@ app.post('/api/admin/events', requireAdmin, async (req, res) => {
         { isActive: false }
       );
     }
-    if (newEvent.status === 'active') {
+    if (newEvent.status === 'open') {
       await Event.updateMany(
-        { _id: { $ne: newEvent._id }, status: 'active' },
-        { status: 'upcoming' }
-      );
-    } else if (newEvent.status === 'live') {
-      await Event.updateMany(
-        { _id: { $ne: newEvent._id }, status: 'live' },
-        { status: 'upcoming' }
+        { _id: { $ne: newEvent._id }, status: 'open' },
+        { status: 'upcomming' }
       );
     }
 
@@ -775,6 +798,13 @@ app.put('/api/admin/events/:id', requireAdmin, async (req, res) => {
       return res.status(404).json({ error: 'Tournament not found' });
     }
 
+    if (status === 'ongoing') {
+      const existingOngoing = await Event.findOne({ _id: { $ne: id }, status: 'ongoing' });
+      if (existingOngoing) {
+        return res.status(400).json({ error: `Cannot update status. Tournament "${existingOngoing.title}" is already ongoing. Only one tournament can be ongoing at a time.` });
+      }
+    }
+
     if (title) event.title = title;
     if (soloEntryFee !== undefined) event.soloEntryFee = Number(soloEntryFee);
     if (teamEntryFee !== undefined) event.teamEntryFee = Number(teamEntryFee);
@@ -788,10 +818,10 @@ app.put('/api/admin/events/:id', requireAdmin, async (req, res) => {
 
     // FIX 10: Auto-sync isActive from status
     if (status) {
-      if (status === 'active' || status === 'live') {
+      if (status === 'open' || status === 'ongoing') {
         event.isActive = true;
       } else {
-        // ended or upcoming: mark as not active
+        // ended or upcomming: mark as not active
         event.isActive = false;
       }
     } else if (isActive !== undefined) {
@@ -807,15 +837,10 @@ app.put('/api/admin/events/:id', requireAdmin, async (req, res) => {
         { isActive: false }
       );
     }
-    if (event.status === 'active') {
+    if (event.status === 'open') {
       await Event.updateMany(
-        { _id: { $ne: event._id }, status: 'active' },
-        { status: 'upcoming' }
-      );
-    } else if (event.status === 'live') {
-      await Event.updateMany(
-        { _id: { $ne: event._id }, status: 'live' },
-        { status: 'upcoming' }
+        { _id: { $ne: event._id }, status: 'open' },
+        { status: 'upcomming' }
       );
     }
 

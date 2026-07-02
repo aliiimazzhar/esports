@@ -37,9 +37,9 @@ export default function AdminPanel() {
   // Tournaments tab state
   const [editTourneyId, setEditTourneyId] = useState(null);
   const [tourneyTitle, setTourneyTitle] = useState('');
-  const [tourneyStatus, setTourneyStatus] = useState('upcoming');
+  const [tourneyStatus, setTourneyStatus] = useState('upcomming');
   const [tourneyPrizePool, setTourneyPrizePool] = useState('');
-  const [tourneyEntryFee, setTourneyEntryFee] = useState(0);
+  const [tourneyEntryFee, setTourneyEntryFee] = useState('');
   const [tourneyPerspective, setTourneyPerspective] = useState('TPP');
   const [tourneyMapSchedule, setTourneyMapSchedule] = useState('Erangel');
   const [tourneyMaxTeams, setTourneyMaxTeams] = useState(16);
@@ -102,7 +102,7 @@ export default function AdminPanel() {
   };
 
   const handleScoreValueChange = (teamId, field, val) => {
-    const numericVal = Math.max(0, parseInt(val) || 0);
+    const numericVal = val === '' ? '' : Math.max(0, parseInt(val) || 0);
     setScoresInput(prev => prev.map(item => {
       if (item.teamId === teamId) {
         return { ...item, [field]: numericVal };
@@ -123,9 +123,14 @@ export default function AdminPanel() {
       return;
     }
 
-    addMatchResults(selectedTourneyId, selectedMap, scoresInput);
+    const cleanedScores = scoresInput.map(item => ({
+      ...item,
+      placementPoints: Number(item.placementPoints) || 0,
+      killPoints: Number(item.killPoints) || 0
+    }));
+    addMatchResults(selectedTourneyId, selectedMap, cleanedScores);
     setScoreSuccess(`Scores for match on ${selectedMap} submitted successfully! Standings updated.`);
-    setScoresInput(prev => prev.map(item => ({ ...item, placementPoints: 0, killPoints: 0 })));
+    setScoresInput(prev => prev.map(item => ({ ...item, placementPoints: '', killPoints: '' })));
     
     setTimeout(() => {
       setScoreSuccess('');
@@ -137,8 +142,8 @@ export default function AdminPanel() {
     setScoresInput(registeredTeams.map(t => ({
       teamId: t.teamId,
       teamName: t.teamName,
-      placementPoints: 0,
-      killPoints: 0
+      placementPoints: '',
+      killPoints: ''
     })));
   }
 
@@ -196,9 +201,9 @@ export default function AdminPanel() {
   const resetTournamentForm = () => {
     setEditTourneyId(null);
     setTourneyTitle('');
-    setTourneyStatus('upcoming');
+    setTourneyStatus('upcomming');
     setTourneyPrizePool('');
-    setTourneyEntryFee(0);
+    setTourneyEntryFee('');
     setTourneyPerspective('TPP');
     setTourneyMapSchedule('Erangel');
     setTourneyMaxTeams(16);
@@ -214,7 +219,7 @@ export default function AdminPanel() {
   };
 
   const handleEditMatchValueChange = (teamId, field, val) => {
-    const numericVal = Math.max(0, parseInt(val) || 0);
+    const numericVal = val === '' ? '' : Math.max(0, parseInt(val) || 0);
     setEditMatchScores(prev => prev.map(item => {
       if (item.teamId === teamId) {
         return { ...item, [field]: numericVal };
@@ -231,8 +236,8 @@ export default function AdminPanel() {
       mapName: editMatchMap,
       scores: editMatchScores.map(s => ({
         ...s,
-        placementPoints: Number(s.placementPoints),
-        killPoints: Number(s.killPoints)
+        placementPoints: Number(s.placementPoints) || 0,
+        killPoints: Number(s.killPoints) || 0
       }))
     };
     updateMatchResult(updatedResult);
@@ -652,9 +657,10 @@ export default function AdminPanel() {
                           onChange={(e) => setTourneyStatus(e.target.value)}
                           className="pubg-input w-full text-xs bg-black"
                         >
-                          <option value="upcoming">Upcoming</option>
-                          <option value="live">Live</option>
-                          <option value="completed">Completed</option>
+                          <option value="upcomming">Upcoming</option>
+                          <option value="open">Open</option>
+                          <option value="ongoing">Ongoing</option>
+                          <option value="ended">Ended</option>
                         </select>
                       </div>
 
@@ -690,7 +696,7 @@ export default function AdminPanel() {
                           type="number" 
                           min="0"
                           value={tourneyEntryFee}
-                          onChange={(e) => setTourneyEntryFee(Number(e.target.value))}
+                          onChange={(e) => setTourneyEntryFee(e.target.value === '' ? '' : Number(e.target.value))}
                           className="pubg-input w-full text-xs font-mono"
                         />
                       </div>
@@ -704,7 +710,7 @@ export default function AdminPanel() {
                           type="number" 
                           min="2"
                           value={tourneyMaxTeams}
-                          onChange={(e) => setTourneyMaxTeams(Number(e.target.value))}
+                          onChange={(e) => setTourneyMaxTeams(e.target.value === '' ? '' : Number(e.target.value))}
                           className="pubg-input w-full text-xs font-mono"
                         />
                       </div>
@@ -722,22 +728,7 @@ export default function AdminPanel() {
                       </div>
                     </div>
 
-                    {/* Map Schedule */}
-                    <div className="space-y-1">
-                      <label className="text-[9px] font-black text-gray-400 uppercase tracking-wider block">
-                        Map Rotation (comma separated)
-                      </label>
-                      <input 
-                        type="text" 
-                        value={tourneyMapSchedule}
-                        onChange={(e) => setTourneyMapSchedule(e.target.value)}
-                        placeholder="Erangel, Miramar, Sanhok"
-                        className="pubg-input w-full text-xs"
-                      />
-                      <span className="text-[8px] text-gray-500 block leading-tight">
-                        * Input maps separated by commas. Each map represents one match scoresheet.
-                      </span>
-                    </div>
+
 
                     {/* Submit Button */}
                     <button
@@ -777,13 +768,13 @@ export default function AdminPanel() {
                               <div className="font-black text-white uppercase tracking-wide text-xs">{t.title}</div>
                               <div className="flex gap-2 items-center mt-1">
                                 <span className={`px-1.5 py-0.5 rounded-sm text-[8px] font-black uppercase border ${
-                                  t.status === 'live'
+                                  t.status === 'ongoing'
                                     ? 'bg-[#10b981]/15 text-[#10b981] border-[#10b981]/30 animate-pulse'
-                                    : t.status === 'completed'
+                                    : t.status === 'ended'
                                       ? 'bg-gray-800 text-gray-400 border-gray-700'
                                       : 'bg-harvest/15 text-eb-yellow border-harvest'
                                 }`}>
-                                   {t.status === 'active' ? 'open' : t.status}
+                                   {t.status === 'upcomming' ? 'upcoming' : t.status}
                                 </span>
                                 <span className="text-[9px] text-gray-500 font-mono font-semibold">{t.date}</span>
                               </div>
