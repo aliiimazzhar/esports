@@ -27,6 +27,8 @@ export default function SignUp() {
       tempErrors.uid = 'Character UID is required';
     } else if (uid.trim().length < 4) {
       tempErrors.uid = 'UID must be at least 4 characters';
+    } else if (!/^\d+$/.test(uid.trim())) {
+      tempErrors.uid = 'Character UID must contain numbers only';
     }
 
     if (!phoneNumber.trim()) {

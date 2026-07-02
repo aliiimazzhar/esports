@@ -1052,7 +1052,7 @@ app.get('/api/events/:eventId/group-stage/schedule', async (req, res) => {
 app.get('/api/events/:eventId/registrations/approved', async (req, res) => {
   try {
     const { eventId } = req.params;
-    
+
     // Auto-allocate seeds and groups first if the deadline has passed
     await autoAllocateGroupsAndSeeds(eventId);
 
@@ -1423,6 +1423,9 @@ app.post('/api/auth/signup', signupLimiter, async (req, res) => {
     }
 
     const trimmedUid = uid.trim();
+    if (!/^\d+$/.test(trimmedUid)) {
+      return res.status(400).json({ error: 'Character UID must contain numbers only.' });
+    }
     const trimmedPhone = phoneNumber.trim();
 
     // FIX 5: Use escaped regex for UID lookup
@@ -1431,12 +1434,17 @@ app.post('/api/auth/signup', signupLimiter, async (req, res) => {
       return res.status(400).json({ error: 'Character UID is already registered.' });
     }
 
+    const existingPhone = await User.findOne({ phoneNumber: trimmedPhone });
+    if (existingPhone) {
+      return res.status(400).json({ error: 'Phone number is already registered.' });
+    }
+
     // FIX 2: Hash with 600k iterations + track hashVersion
     const salt = generateSalt();
     const passwordHash = hashPassword(password, salt, HASH_ITERATIONS_CURRENT);
 
     const recoverySalt = generateSalt();
-    const recoveryPasswordHash = hashPassword(recoveryPassword.trim().toLowerCase(), recoverySalt, HASH_ITERATIONS_CURRENT);
+    const recoveryPasswordHash = hashPassword(recoveryPassword.trim(), recoverySalt, HASH_ITERATIONS_CURRENT);
 
     const newUser = new User({
       uid: trimmedUid,
@@ -1534,6 +1542,9 @@ app.post('/api/auth/recover', authLimiter, async (req, res) => {
     }
 
     const trimmedUid = uid.trim();
+    if (!/^\d+$/.test(trimmedUid)) {
+      return res.status(400).json({ error: 'Character UID must contain numbers only.' });
+    }
     const trimmedPhone = phoneNumber.trim();
 
     // FIX 5: Escaped regex
@@ -1548,7 +1559,7 @@ app.post('/api/auth/recover', authLimiter, async (req, res) => {
 
     // Check recovery password using correct iteration count
     const recoveryIterations = user.hashVersion === 1 ? HASH_ITERATIONS_CURRENT : HASH_ITERATIONS_LEGACY;
-    const computedRecoveryHash = hashPassword(recoveryPassword.trim().toLowerCase(), user.recoverySalt, recoveryIterations);
+    const computedRecoveryHash = hashPassword(recoveryPassword.trim(), user.recoverySalt, recoveryIterations);
     if (computedRecoveryHash !== user.recoveryPasswordHash) {
       return res.status(400).json({ error: 'Incorrect recovery password phrase.' });
     }

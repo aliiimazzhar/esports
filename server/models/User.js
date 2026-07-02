@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema({
   uid: { type: String, required: true, unique: true, index: true },
-  phoneNumber: { type: String, required: true },
+  phoneNumber: { type: String, required: true, unique: true, index: true },
   passwordHash: { type: String, required: true },
   salt: { type: String, required: true },
   recoveryPasswordHash: { type: String, required: true },

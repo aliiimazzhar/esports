@@ -25,6 +25,8 @@ export default function RecoverPassword() {
 
     if (!uid.trim()) {
       tempErrors.uid = 'Character UID is required';
+    } else if (!/^\d+$/.test(uid.trim())) {
+      tempErrors.uid = 'Character UID must contain numbers only';
     }
 
     if (!phoneNumber.trim()) {
