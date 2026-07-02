@@ -746,6 +746,45 @@ export default function AdminDashboardInternal() {
       return;
     }
 
+    const now = new Date();
+    const deadlineDate = new Date(deadline);
+    const startDate = new Date(startTime);
+
+    // Rule: Match start time must be >= registration deadline
+    if (startDate < deadlineDate) {
+      setDeployError('Match start date/time must be greater than or equal to the registration deadline.');
+      return;
+    }
+
+    if (tourneyStatus === 'upcomming' || tourneyStatus === 'open') {
+      if (deadlineDate <= now) {
+        setDeployError('Registration deadline must be in the future for this tournament status.');
+        return;
+      }
+      if (startDate <= now) {
+        setDeployError('Match start time must be in the future for this tournament status.');
+        return;
+      }
+    } else if (tourneyStatus === 'ongoing') {
+      if (deadlineDate > now) {
+        setDeployError('Registration deadline must be in the past for an Ongoing tournament.');
+        return;
+      }
+      if (startDate > now) {
+        setDeployError('Match start time must be in the past or equal to the current time for an Ongoing tournament.');
+        return;
+      }
+    } else if (tourneyStatus === 'ended') {
+      if (deadlineDate > now) {
+        setDeployError('Registration deadline must be in the past for an Ended tournament.');
+        return;
+      }
+      if (startDate > now) {
+        setDeployError('Match start time must be in the past for an Ended tournament.');
+        return;
+      }
+    }
+
     setDeploying(true);
     setDeployError('');
     setDeploySuccess('');

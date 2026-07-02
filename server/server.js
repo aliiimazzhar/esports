@@ -87,6 +87,69 @@ function verifyToken(token) {
   }
 }
 
+async function validateTournamentDatesAndStatus(status, registrationDeadline, matchStartTime, eventId = null) {
+  const now = new Date();
+  const deadline = new Date(registrationDeadline);
+  const start = new Date(matchStartTime);
+
+  if (isNaN(deadline.getTime())) {
+    return 'Invalid registration deadline date.';
+  }
+  if (isNaN(start.getTime())) {
+    return 'Invalid match start time date.';
+  }
+
+  // Rule 1: Match Start Time >= Registration Deadline
+  if (start < deadline) {
+    return 'Match start date/time must be greater than or equal to the registration deadline.';
+  }
+
+  if (status === 'upcomming') {
+    // Rule 2: Registration deadline and match start time must be in the future
+    if (deadline <= now) {
+      return 'Registration deadline must be in the future for an Upcoming tournament.';
+    }
+    if (start <= now) {
+      return 'Match start time must be in the future for an Upcoming tournament.';
+    }
+  } else if (status === 'open') {
+    // Rule 3: Registration deadline and match start time must be in the future
+    if (deadline <= now) {
+      return 'Registration deadline must be in the future for an Open tournament.';
+    }
+    if (start <= now) {
+      return 'Match start time must be in the future for an Open tournament.';
+    }
+  } else if (status === 'ongoing') {
+    // Rule 4: Registration deadline must be in the past, match start time past or equal to now
+    if (deadline > now) {
+      return 'Registration deadline must be in the past for an Ongoing tournament.';
+    }
+    if (start > now) {
+      return 'Match start time must be in the past or equal to the current time for an Ongoing tournament.';
+    }
+    // Only one ongoing tournament at a time
+    const query = { status: 'ongoing' };
+    if (eventId) {
+      query._id = { $ne: eventId };
+    }
+    const existingOngoing = await Event.findOne(query);
+    if (existingOngoing) {
+      return `Cannot set status to ongoing. Tournament "${existingOngoing.title}" is already ongoing. Only one tournament can be ongoing at a time. Please end it manually first.`;
+    }
+  } else if (status === 'ended') {
+    // Rule 5: Registration deadline and match start time must be in the past
+    if (deadline > now) {
+      return 'Registration deadline must be in the past for an Ended tournament.';
+    }
+    if (start > now) {
+      return 'Match start time must be in the past for an Ended tournament.';
+    }
+  }
+
+  return null; // validation passed
+}
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 const ADMIN_PASSCODE = process.env.ADMIN_PASSCODE || 'admin123';
@@ -340,8 +403,10 @@ app.get('/api/events/active', async (req, res) => {
 app.get('/api/events/active/leaderboard', async (req, res) => {
   try {
     await checkAndTransitionExpiredEvents();
-    // FIX 10: Use status field instead of isActive alone
-    const activeEvent = await Event.findOne({ status: { $in: ['open', 'ongoing'] } });
+    let activeEvent = await Event.findOne({ status: 'ongoing' });
+    if (!activeEvent) {
+      activeEvent = await Event.findOne({ isActive: true });
+    }
     if (!activeEvent) {
       return res.status(404).json({ error: 'No active tournament found.' });
     }
@@ -740,14 +805,12 @@ app.post('/api/admin/events', requireAdmin, async (req, res) => {
     }
 
     const newStatus = status || 'open';
-    // FIX 10: Sync isActive from status
     const newIsActive = newStatus === 'open' || newStatus === 'ongoing';
 
-    if (status === 'ongoing') {
-      const existingOngoing = await Event.findOne({ status: 'ongoing' });
-      if (existingOngoing) {
-        return res.status(400).json({ error: `Cannot create tournament with ongoing status. Tournament "${existingOngoing.title}" is already ongoing. Only one tournament can be ongoing at a time.` });
-      }
+    // Full date & status validation
+    const validationError = await validateTournamentDatesAndStatus(newStatus, registrationDeadline, matchStartTime);
+    if (validationError) {
+      return res.status(400).json({ error: validationError });
     }
 
     const newEvent = new Event({
@@ -773,12 +836,7 @@ app.post('/api/admin/events', requireAdmin, async (req, res) => {
         { isActive: false }
       );
     }
-    if (newEvent.status === 'open') {
-      await Event.updateMany(
-        { _id: { $ne: newEvent._id }, status: 'open' },
-        { status: 'upcomming' }
-      );
-    }
+
 
     res.status(201).json(newEvent);
   } catch (err) {
@@ -798,11 +856,14 @@ app.put('/api/admin/events/:id', requireAdmin, async (req, res) => {
       return res.status(404).json({ error: 'Tournament not found' });
     }
 
-    if (status === 'ongoing') {
-      const existingOngoing = await Event.findOne({ _id: { $ne: id }, status: 'ongoing' });
-      if (existingOngoing) {
-        return res.status(400).json({ error: `Cannot update status. Tournament "${existingOngoing.title}" is already ongoing. Only one tournament can be ongoing at a time.` });
-      }
+    const targetStatus = status || event.status;
+    const targetDeadline = registrationDeadline || event.registrationDeadline;
+    const targetStart = matchStartTime || event.matchStartTime;
+
+    // Full date & status validation using resolved values
+    const validationError = await validateTournamentDatesAndStatus(targetStatus, targetDeadline, targetStart, id);
+    if (validationError) {
+      return res.status(400).json({ error: validationError });
     }
 
     if (title) event.title = title;
@@ -837,12 +898,7 @@ app.put('/api/admin/events/:id', requireAdmin, async (req, res) => {
         { isActive: false }
       );
     }
-    if (event.status === 'open') {
-      await Event.updateMany(
-        { _id: { $ne: event._id }, status: 'open' },
-        { status: 'upcomming' }
-      );
-    }
+
 
     res.json(event);
   } catch (err) {
